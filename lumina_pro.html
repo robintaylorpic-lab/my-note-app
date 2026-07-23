@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lumina Pro — Notes, Linked</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0c10; --bg-elevated:#15171d; --glass-bg:rgba(19,21,27,0.74); --glass-border:rgba(255,255,255,0.08);
+  --text-main:#ece7dc; --text-muted:#8d8f9b; --text-faint:#5c5e69;
+  --accent:#c9a15c; --accent-hover:#dab577; --accent-soft:rgba(201,161,92,0.14);
+  --link:#5fb3a3; --link-soft:rgba(95,179,163,0.16);
+  --danger:#e0685f; --success:#4fae82; --warning:#dba64a;
+  --sidebar-w:258px; --list-w:330px;
+  --shadow:0 10px 24px -8px rgba(0,0,0,0.45); --shadow-lg:0 24px 48px -12px rgba(0,0,0,0.6);
+  --radius:12px; --serif:'Fraunces', serif; --sans:'Inter', sans-serif; --mono:'IBM Plex Mono', monospace;
+}
+[data-theme="light"]{
+  --bg:#f6f4ee; --bg-elevated:#ffffff; --glass-bg:rgba(255,255,255,0.78); --glass-border:rgba(20,20,15,0.09);
+  --text-main:#1d1c18; --text-muted:#68655c; --text-faint:#9c988c;
+  --accent:#a9793a; --accent-hover:#8f6329; --accent-soft:rgba(169,121,58,0.12);
+  --link:#2f7d70; --link-soft:rgba(47,125,112,0.12);
+  --shadow:0 10px 20px -8px rgba(30,25,15,0.12); --shadow-lg:0 20px 40px -10px rgba(30,25,15,0.18);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:var(--sans);}
+::selection{background:var(--accent-soft);color:var(--text-main);}
+body{background:var(--bg);color:var(--text-main);height:100vh;overflow:hidden;display:flex;
+  background-image:radial-gradient(circle at 8% 12%, rgba(201,161,92,0.07), transparent 22%),
+                    radial-gradient(circle at 92% 88%, rgba(95,179,163,0.07), transparent 24%);}
+.glass{background:var(--glass-bg);backdrop-filter:blur(18px);border-right:1px solid var(--glass-border);}
+button{background:none;border:none;color:var(--text-main);cursor:pointer;border-radius:8px;transition:all .15s ease;display:flex;align-items:center;justify-content:center;font-family:var(--sans);}
+button:hover{background:rgba(255,255,255,0.06);}
+[data-theme="light"] button:hover{background:rgba(0,0,0,0.05);}
+svg{width:17px;height:17px;fill:currentColor;flex-shrink:0;}
+input,select,textarea{font-family:var(--sans);}
+#app{display:flex;width:100%;height:100%;}
+body.zen-mode .sidebar,body.zen-mode .list-view,body.zen-mode .toolbar,body.zen-mode .editor-header,body.zen-mode .editor-footer{display:none!important;}
+body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;}
+
+/* Sidebar */
+.sidebar{width:var(--sidebar-w);display:flex;flex-direction:column;padding:22px 12px;z-index:10;transition:transform .3s ease;}
+.brand{font-family:var(--serif);font-size:1.28rem;font-weight:600;display:flex;align-items:center;gap:9px;margin-bottom:22px;padding:0 8px;color:var(--text-main);letter-spacing:.2px;}
+.brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);}
+.nav-section-title{font-size:.66rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--text-faint);font-weight:700;margin:16px 10px 6px;}
+.nav-item{padding:7px 10px;margin-bottom:2px;border-radius:8px;display:flex;align-items:center;gap:10px;font-size:.85rem;font-weight:500;color:var(--text-muted);cursor:pointer;}
+.nav-item:hover,.nav-item.active{background:rgba(255,255,255,0.06);color:var(--text-main);}
+[data-theme="light"] .nav-item:hover,[data-theme="light"] .nav-item.active{background:rgba(0,0,0,0.05);}
+.nav-item.active{color:var(--accent);}
+.nav-item .badge{margin-left:auto;font-size:.7rem;background:rgba(255,255,255,0.08);padding:1px 7px;border-radius:10px;color:var(--text-muted);}
+.tags-container,.saved-container{max-height:96px;overflow-y:auto;}
+.spacer{flex-grow:1;}
+
+/* List View */
+.list-view{width:var(--list-w);display:flex;flex-direction:column;border-right:1px solid var(--glass-border);background:var(--glass-bg);backdrop-filter:blur(14px);}
+.list-header{padding:18px;border-bottom:1px solid var(--glass-border);}
+.search-bar{display:flex;align-items:center;background:rgba(255,255,255,0.05);border-radius:9px;padding:7px 10px;margin-bottom:10px;gap:6px;}
+[data-theme="light"] .search-bar{background:rgba(0,0,0,0.04);}
+.search-bar input{background:none;border:none;color:var(--text-main);outline:none;width:100%;font-size:.85rem;}
+.list-actions{display:flex;justify-content:space-between;align-items:center;gap:6px;}
+.btn-new{background:var(--accent);color:#151109;padding:6px 14px;border-radius:8px;font-weight:700;font-size:.82rem;box-shadow:var(--shadow);}
+.btn-new:hover{background:var(--accent-hover);}
+.chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.filter-chip{font-size:.68rem;padding:2px 8px;border-radius:20px;background:var(--link-soft);color:var(--link);cursor:pointer;display:flex;align-items:center;gap:4px;}
+.filter-chip .x{opacity:.7;}
+
+.notes-list{flex-grow:1;overflow-y:auto;padding:10px;}
+.note-card{padding:12px 14px;border-radius:10px;cursor:pointer;margin-bottom:6px;transition:all .15s ease;border:1px solid transparent;}
+.note-card:hover{background:rgba(255,255,255,0.045);}
+[data-theme="light"] .note-card:hover{background:rgba(0,0,0,0.035);}
+.note-card.active{background:var(--accent-soft);border-color:rgba(201,161,92,0.35);}
+.nc-header{display:flex;justify-content:space-between;margin-bottom:4px;gap:6px;}
+.nc-title{font-weight:600;font-size:.93rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--serif);}
+.nc-icons{display:flex;gap:4px;color:var(--accent);flex-shrink:0;}
+.nc-icons svg{width:12px;height:12px;}
+.nc-preview{font-size:.79rem;color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px;line-height:1.35;}
+.nc-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;}
+.tag-pill{font-size:.66rem;background:var(--accent-soft);color:var(--accent);padding:1px 7px;border-radius:5px;}
+.nc-meta{font-size:.68rem;color:var(--text-faint);}
+
+/* Editor View */
+.editor-view{flex-grow:1;display:flex;flex-direction:column;background:transparent;position:relative;}
+.editor-header{padding:11px 25px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--glass-border);}
+.editor-actions{display:flex;gap:5px;}
+.icon-btn{padding:6px;border-radius:6px;}
+.icon-btn.active{color:var(--accent);background:var(--accent-soft);}
+.toolbar{display:flex;padding:7px 25px;gap:3px;border-bottom:1px solid var(--glass-border);overflow-x:auto;flex-wrap:wrap;}
+.tool-btn{padding:5px 9px;border-radius:6px;font-size:.83rem;font-weight:600;white-space:nowrap;}
+.tool-btn:hover{background:rgba(255,255,255,0.06);}
+[data-theme="light"] .tool-btn:hover{background:rgba(0,0,0,0.05);}
+.tool-sep{width:1px;background:var(--glass-border);margin:2px 4px;}
+
+.editor-content-wrapper{flex-grow:1;padding:26px 38px 60px;overflow-y:auto;max-width:840px;margin:0 auto;width:100%;position:relative;}
+.title-input{width:100%;font-family:var(--serif);font-size:2.1rem;font-weight:600;background:none;border:none;color:var(--text-main);outline:none;margin-bottom:14px;}
+.editor-body{min-height:52vh;outline:none;font-size:1rem;line-height:1.7;color:var(--text-main);}
+.editor-body[empty]:before{content:attr(placeholder);color:var(--text-faint);pointer-events:none;display:block;}
+.editor-body blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--text-muted);margin:1em 0;font-style:italic;}
+.editor-body code{background:rgba(255,255,255,0.07);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:.88em;}
+[data-theme="light"] .editor-body code{background:rgba(0,0,0,0.06);}
+.editor-body pre{background:#0e0f13;color:#e7e4da;padding:13px;border-radius:9px;overflow-x:auto;font-family:var(--mono);margin:10px 0;font-size:.86rem;}
+.editor-body table{border-collapse:collapse;width:100%;margin:10px 0;}
+.editor-body th,.editor-body td{border:1px solid var(--glass-border);padding:8px;text-align:left;}
+.editor-body img{max-width:100%;border-radius:9px;margin:10px 0;box-shadow:var(--shadow);}
+.editor-body h2{font-family:var(--serif);margin:14px 0 6px;}
+.editor-body h3{font-family:var(--serif);margin:12px 0 4px;font-weight:600;}
+.callout{padding:12px;border-radius:9px;margin:10px 0;display:flex;gap:10px;align-items:flex-start;}
+.callout-info{background:var(--accent-soft);border-left:4px solid var(--accent);}
+.wiki-link{background:var(--link-soft);color:var(--link);padding:1px 7px;border-radius:6px;cursor:pointer;font-weight:600;font-size:.94em;white-space:nowrap;}
+.wiki-link:hover{background:rgba(95,179,163,0.28);}
+.editor-footer{padding:8px 25px;font-size:.73rem;color:var(--text-faint);border-top:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;}
+
+/* Wiki autocomplete */
+#wiki-autocomplete{position:fixed;display:none;background:var(--bg-elevated);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow-lg);z-index:200;min-width:220px;max-height:220px;overflow-y:auto;padding:6px;}
+.wac-item{padding:7px 10px;border-radius:6px;cursor:pointer;font-size:.85rem;}
+.wac-item:hover,.wac-item.sel{background:var(--accent-soft);color:var(--accent);}
+.wac-empty{padding:8px 10px;font-size:.8rem;color:var(--text-faint);}
+
+/* Modals */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);z-index:100;align-items:center;justify-content:center;padding:20px;}
+.modal-content{background:var(--bg-elevated);border:1px solid var(--glass-border);padding:22px;border-radius:14px;width:420px;max-width:100%;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;gap:12px;}
+.modal-content h3{font-family:var(--serif);font-size:1.15rem;font-weight:600;}
+.modal-content input{padding:9px 11px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text-main);outline:none;font-size:.88rem;}
+[data-theme="light"] .modal-content input{background:rgba(0,0,0,0.03);}
+.modal-content input:focus{border-color:var(--accent);}
+
+#command-palette .modal-content{width:520px;padding:10px;}
+.cmd-input{width:100%;padding:13px;background:none;border:none;border-bottom:1px solid var(--glass-border);color:var(--text-main);font-size:1rem;outline:none;}
+.cmd-list{max-height:320px;overflow-y:auto;display:flex;flex-direction:column;}
+.cmd-item{padding:10px;border-radius:7px;cursor:pointer;display:flex;justify-content:space-between;font-size:.88rem;}
+.cmd-item:hover{background:rgba(255,255,255,0.06);}
+
+.template-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.template-card{border:1px solid var(--glass-border);border-radius:10px;padding:14px 10px;text-align:center;cursor:pointer;font-size:.83rem;font-weight:600;}
+.template-card:hover{border-color:var(--accent);background:var(--accent-soft);}
+.template-card .ti{font-size:1.5rem;display:block;margin-bottom:6px;}
+
+/* Boards (Kanban) */
+.board-view{display:none;flex-direction:column;flex-grow:1;height:100%;overflow:hidden;}
+.board-view.active{display:flex;}
+.board-toolbar{padding:14px 22px;border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:10px;}
+.board-toolbar select{background:var(--glass-bg);color:var(--text-main);border:1px solid var(--glass-border);border-radius:8px;padding:6px 10px;font-size:.85rem;}
+.board-cols{flex-grow:1;overflow-x:auto;overflow-y:hidden;display:flex;gap:16px;padding:20px 22px;align-items:flex-start;}
+.board-col{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;width:270px;flex-shrink:0;display:flex;flex-direction:column;max-height:100%;}
+.board-col-head{padding:11px 13px;font-weight:700;font-size:.85rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--glass-border);font-family:var(--serif);}
+.board-col-cards{padding:10px;overflow-y:auto;flex-grow:1;min-height:40px;}
+.board-card{background:var(--bg-elevated);border:1px solid var(--glass-border);border-radius:9px;padding:10px 11px;margin-bottom:8px;font-size:.84rem;cursor:grab;box-shadow:var(--shadow);}
+.board-card.dragging{opacity:0.4;}
+.board-col-cards.drag-over{background:var(--accent-soft);border-radius:8px;}
+.board-add-card{padding:8px 13px;font-size:.8rem;color:var(--text-muted);text-align:left;justify-content:flex-start;}
+.board-add-col{width:230px;flex-shrink:0;border:1.5px dashed var(--glass-border);border-radius:12px;color:var(--text-muted);font-size:.85rem;padding:14px;align-self:flex-start;}
+
+/* Graph */
+.graph-view{display:none;flex-direction:column;flex-grow:1;height:100%;}
+.graph-view.active{display:flex;}
+.graph-canvas-wrap{flex-grow:1;overflow:hidden;position:relative;}
+.graph-node-label{font-family:var(--sans);font-weight:600;pointer-events:none;}
+
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);gap:6px;}
+mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:2px;}
+.menu-toggle{display:none;} .back-btn{display:none;}
+
+@media (max-width:900px){
+  .sidebar{position:absolute;left:-100%;background:var(--glass-bg);backdrop-filter:blur(20px);height:100%;box-shadow:var(--shadow-lg);}
+  .sidebar.open{left:0;} .menu-toggle{display:block;}
+}
+@media (max-width:768px){
+  .list-view{width:100%;}
+  .editor-view,.board-view,.graph-view{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:5;}
+  .editor-view.active,.board-view.active,.graph-view.active{display:flex;}
+  .back-btn{display:block;margin-right:8px;}
+}
+@media print{
+  .sidebar,.list-view,.editor-header,.toolbar,.editor-footer{display:none!important;}
+  .editor-view{width:100%!important;padding:0!important;}
+  body{background:white!important;color:black!important;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar glass" id="sidebar">
+    <div class="brand"><span class="dot"></span>Lumina <span style="color:var(--accent);font-weight:400;">Pro</span></div>
+
+    <div class="nav-item active" data-filter="all" onclick="setFilter('all')">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 7h10v2H7zm0 4h10v2H7zm0 4h7v2H7z"/></svg>
+      All Notes <span class="badge" id="count-all">0</span>
+    </div>
+    <div class="nav-item" data-filter="pinned" onclick="setFilter('pinned')">
+      <svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+      Pinned <span class="badge" id="count-pinned">0</span>
+    </div>
+    <div class="nav-item" data-filter="favorites" onclick="setFilter('favorites')">
+      <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      Favorites <span class="badge" id="count-favorites">0</span>
+    </div>
+    <div class="nav-item" data-filter="archived" onclick="setFilter('archived')">
+      <svg viewBox="0 0 24 24"><path d="M20 21H4V10h16v11zM3 3h18v6H3V3zm15 13H6v2h12v-2z"/></svg>
+      Archive <span class="badge" id="count-archived">0</span>
+    </div>
+    <div class="nav-item" data-filter="trash" onclick="setFilter('trash')">
+      <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      Trash <span class="badge" id="count-trash">0</span>
+    </div>
+
+    <div class="nav-section-title">Workspace</div>
+    <div class="nav-item" id="nav-graph" onclick="openGraphView()">
+      <svg viewBox="0 0 24 24"><path d="M17 3a3 3 0 0 0-2.83 4H9.83A3 3 0 1 0 7 12c.35 0 .69-.06 1-.17v4.34A3 3 0 1 0 10 22a3 3 0 0 0 2.83-4h4.34A3 3 0 1 0 17 15c-.35 0-.69.06-1 .17v-4.34A3 3 0 0 0 20 8a3 3 0 0 0-3-5z"/></svg>
+      Graph View
+    </div>
+    <div class="nav-item" id="nav-boards" onclick="openBoardView()">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16v2H4V4zm0 5h6v11H4V9zm8 0h6v6h-6V9zm0 8h6v3h-6v-3z"/></svg>
+      Boards
+    </div>
+    <div class="nav-item" onclick="openTemplatesModal()">
+      <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v5h-8V3zm0 7h8v11h-8V10zM3 13h8v8H3v-8z"/></svg>
+      New from Template
+    </div>
+
+    <div class="nav-section-title">Tags</div>
+    <div class="tags-container" id="tags-list"></div>
+
+    <div class="nav-section-title" id="saved-title" style="display:none;">Saved Searches</div>
+    <div class="saved-container" id="saved-list"></div>
+
+    <div class="spacer"></div>
+
+    <div class="nav-item" onclick="openCommandPalette()">
+      <svg viewBox="0 0 24 24"><path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 5H5v-2h2v2zm10 0H7v-2h10v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
+      Palette <small style="margin-left:auto;opacity:.6;">Ctrl+K</small>
+    </div>
+    <div class="nav-item" onclick="exportMarkdown()">
+      <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Export MD
+    </div>
+    <div class="nav-item" onclick="triggerBackup()">
+      <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+      Backup (JSON)
+    </div>
+    <div class="nav-item" onclick="openRestoreDialog()">
+      <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 11h-3V7h-4v4H7l5 5 5-5z"/></svg>
+      Restore
+    </div>
+    <div class="nav-item" onclick="openSettingsModal()">
+      <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm8.94 3a7.96 7.96 0 00-.7-2.6l1.4-1.9-2-2-1.9 1.4a7.96 7.96 0 00-2.6-.7L14.5 3h-3l-.6 2.2c-.9.15-1.8.4-2.6.7L6.4 4.5l-2 2 1.4 1.9c-.3.8-.55 1.7-.7 2.6L3 11.5v3l2.2.6c.15.9.4 1.8.7 2.6l-1.4 1.9 2 2 1.9-1.4c.8.3 1.7.55 2.6.7l.6 2.2h3l.6-2.2c.9-.15 1.8-.4 2.6-.7l1.9 1.4 2-2-1.4-1.9c.3-.8.55-1.7.7-2.6L21 14.5v-3l-2.06-.5z"/></svg>
+      Settings &amp; Cloud Sync
+    </div>
+    <div class="nav-item" onclick="toggleZenMode()">
+      <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
+      Zen Mode
+    </div>
+    <div class="nav-item" onclick="toggleTheme()">
+      <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4C12.92 3.04 12.46 3 12 3z"/></svg>
+      Theme Switch
+    </div>
+  </aside>
+
+  <main class="list-view">
+    <div class="list-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;">
+          <button class="menu-toggle icon-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+          </button>
+          <h2 style="font-family:var(--serif);font-size:1.12rem;margin-left:5px;font-weight:600;" id="list-title">All Notes</h2>
+        </div>
+        <button class="btn-new" onclick="createNewNote()">+ New Note</button>
+      </div>
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <input type="text" id="search-input" placeholder="Fuzzy search title, content, #tags..." oninput="handleSearch()">
+        <button class="icon-btn" title="Filter by tags" onclick="toggleTagFilterPanel()">
+          <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+        </button>
+        <button class="icon-btn" title="Save this search" onclick="saveCurrentSearch()">
+          <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.1 0-2 .9-2 2v14l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+        </button>
+      </div>
+      <div id="tag-filter-panel" class="chip-row" style="display:none;margin-bottom:8px;"></div>
+      <div id="active-filter-chips" class="chip-row"></div>
+      <div class="list-actions">
+        <select id="sort-select" onchange="renderNotes()" style="background:transparent;border:none;color:var(--text-muted);font-size:.8rem;cursor:pointer;">
+          <option value="updatedDesc">Sort: Last Edited</option>
+          <option value="createdDesc">Sort: Newest</option>
+          <option value="alphaAsc">Sort: A-Z</option>
+        </select>
+        <button onclick="emptyTrashPrompt()" id="btn-empty-trash" style="display:none;color:var(--danger);font-size:.75rem;">Empty Trash</button>
+      </div>
+    </div>
+    <div class="notes-list" id="notes-list"></div>
+  </main>
+
+  <section class="editor-view" id="editor-view">
+    <div id="editor-empty" class="empty-state">
+      <svg viewBox="0 0 24 24" style="width:46px;height:46px;opacity:.35;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+      <h3 style="font-family:var(--serif);font-weight:500;">Select a note, or create a new one</h3>
+    </div>
+
+    <div id="editor-active" style="display:none;height:100%;flex-direction:column;">
+      <div class="editor-header glass">
+        <div style="display:flex;align-items:center;">
+          <button class="back-btn icon-btn" onclick="closeMobileEditor()">
+            <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <span id="editor-meta" style="font-size:.8rem;color:var(--text-muted);">Last edited: Just now</span>
+        </div>
+        <div class="editor-actions">
+          <button class="icon-btn" id="btn-lock" title="Lock Note" onclick="toggleLockPrompt()"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></button>
+          <button class="icon-btn" id="btn-pin" title="Pin Note" onclick="toggleNoteProperty('pinned')"><svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg></button>
+          <button class="icon-btn" id="btn-fav" title="Favorite" onclick="toggleNoteProperty('favorite')"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></button>
+          <button class="icon-btn" id="btn-archive" title="Archive" onclick="toggleNoteProperty('archived')"><svg viewBox="0 0 24 24"><path d="M20 21H4V10h16v11zM3 3h18v6H3V3zm15 13H6v2h12v-2z"/></svg></button>
+          <button class="icon-btn" id="btn-dup" title="Duplicate Note" onclick="duplicateNote()"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+          <button class="icon-btn" title="Print/Export PDF" onclick="window.print()"><svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg></button>
+          <button class="icon-btn" style="color:var(--danger)" title="Move to Trash" onclick="trashCurrentNote()"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="tool-btn" onclick="execCmd('bold')"><b>B</b></button>
+        <button class="tool-btn" onclick="execCmd('italic')"><i>I</i></button>
+        <button class="tool-btn" onclick="execCmd('underline')"><u>U</u></button>
+        <button class="tool-btn" onclick="execCmd('strikeThrough')"><s>S</s></button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" onclick="execCmd('formatBlock','H2')">H1</button>
+        <button class="tool-btn" onclick="execCmd('formatBlock','H3')">H2</button>
+        <button class="tool-btn" onclick="execCmd('insertUnorderedList')">• List</button>
+        <button class="tool-btn" onclick="execCmd('insertOrderedList')">1. List</button>
+        <button class="tool-btn" onclick="insertChecklist()">☑ Checklist</button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" onclick="execCmd('hiliteColor','rgba(201,161,92,0.3)')">HL</button>
+        <button class="tool-btn" onclick="insertCallout('info')">💡 Callout</button>
+        <button class="tool-btn" onclick="insertCodeBlock()">`Code`</button>
+        <button class="tool-btn" onclick="insertTable()">📊 Table</button>
+        <button class="tool-btn" onclick="triggerImageUpload()">🖼️ Image</button>
+        <button class="tool-btn" title="Link to another note" onclick="insertWikiTrigger()">🔗 [[Link]]</button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" onclick="execCmd('undo')">↩</button>
+        <button class="tool-btn" onclick="execCmd('redo')">↪</button>
+      </div>
+
+      <div class="editor-content-wrapper">
+        <input type="text" id="editor-title" class="title-input" placeholder="Untitled Note">
+        <div id="editor-body" class="editor-body" contenteditable="true" placeholder="Type here, use #tags, [[Note Title]] to link, or paste images directly..."></div>
+      </div>
+
+      <div class="editor-footer">
+        <div style="display:flex;gap:15px;">
+          <span id="stat-words">0 words</span>
+          <span id="stat-chars">0 chars</span>
+          <span id="stat-time">1 min read</span>
+          <span id="stat-links">0 links</span>
+        </div>
+        <span id="save-status" style="color:var(--success);font-weight:500;">Saved</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Boards (Kanban) View -->
+  <section class="board-view" id="board-view">
+    <div class="board-toolbar">
+      <button class="back-btn icon-btn" onclick="closeBoardView()"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+      <select id="board-select" onchange="switchBoard(this.value)"></select>
+      <button class="tool-btn" onclick="renameCurrentBoard()">✎ Rename</button>
+      <button class="tool-btn" onclick="createBoard()">+ New Board</button>
+      <button class="tool-btn" style="color:var(--danger)" onclick="deleteCurrentBoard()">Delete Board</button>
+    </div>
+    <div class="board-cols" id="board-cols"></div>
+  </section>
+
+  <!-- Graph View -->
+  <section class="graph-view" id="graph-view">
+    <div class="board-toolbar">
+      <button class="back-btn icon-btn" onclick="closeGraphView()"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+      <span style="font-family:var(--serif);font-weight:600;font-size:1.05rem;">Knowledge Graph</span>
+      <span style="color:var(--text-faint);font-size:.8rem;">— nodes = notes, lines = [[wiki-links]]. Click a node to open.</span>
+      <button class="tool-btn" style="margin-left:auto;" onclick="renderGraph()">↻ Re-layout</button>
+    </div>
+    <div class="graph-canvas-wrap" id="graph-wrap"></div>
+  </section>
+</div>
+
+<!-- Hidden File Inputs -->
+<input type="file" id="img-upload-input" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+<input type="file" id="restore-file-input" style="display:none;" accept=".json" onchange="processRestore(event)">
+
+<!-- Password Modal -->
+<div class="modal" id="password-modal">
+  <div class="modal-content">
+    <h3 id="modal-title">Lock Note</h3>
+    <p id="modal-desc" style="font-size:.85rem;color:var(--text-muted);">Enter password to continue</p>
+    <input type="password" id="modal-pass-input" placeholder="Password...">
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="closePasswordModal()">Cancel</button>
+      <button class="btn-new" onclick="submitPasswordModal()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Command Palette -->
+<div class="modal" id="command-palette">
+  <div class="modal-content">
+    <input type="text" class="cmd-input" id="cmd-input" placeholder="Type a note title or command..." oninput="handleCommandSearch()">
+    <div class="cmd-list" id="cmd-list"></div>
+  </div>
+</div>
+
+<!-- Templates Modal -->
+<div class="modal" id="templates-modal">
+  <div class="modal-content" style="width:460px;">
+    <h3>New note from a template</h3>
+    <div class="template-grid" id="template-grid"></div>
+    <div style="display:flex;justify-content:flex-end;"><button onclick="closeTemplatesModal()">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Settings / Cloud Sync Modal -->
+<div class="modal" id="settings-modal">
+  <div class="modal-content" style="width:460px;">
+    <h3>Settings &amp; Cloud Sync</h3>
+    <p style="font-size:.8rem;color:var(--text-muted);line-height:1.5;">
+      Google Drive sync চালাতে হলে নিজের <b>Google Cloud Console</b> থেকে একটি OAuth Client ID বানাও (Drive API enable করে), আর এই পেজের URL-টা Authorized JavaScript origin হিসেবে যোগ করো। এটি ব্রাউজারে file:// হিসেবে খুললে কাজ করবে না — কোনো https:// hosting (যেমন GitHub Pages) দরকার হবে।
+    </p>
+    <input type="text" id="gdrive-client-id" placeholder="Google OAuth Client ID">
+    <div id="gdrive-status" style="font-size:.8rem;color:var(--text-muted);">চিহ্নিত নেই — Client ID দিয়ে Save করো।</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-new" onclick="saveDriveClientId()">Save ID</button>
+      <button onclick="driveConnect()">🔌 Connect</button>
+      <button onclick="driveSyncUp()">⬆ Sync to Drive</button>
+      <button onclick="driveSyncDown()">⬇ Restore from Drive</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;"><button onclick="closeSettingsModal()">Close</button></div>
+  </div>
+</div>
+
+<!-- Wiki-link autocomplete -->
+<div id="wiki-autocomplete"></div>
+
+<script>
+/* ============ State ============ */
+let notes = [];
+let boards = [];
+let savedSearches = [];
+let activeNoteId = null;
+let currentFilter = 'all';
+let currentTagFilter = null;
+let activeTagFilters = new Set();
+let searchQuery = '';
+let modalCallback = null;
+let currentBoardId = null;
+let dragCardInfo = null;
+
+const STORAGE_KEY = 'lumina_studio_notes';
+const BOARDS_KEY = 'lumina_boards';
+const SAVED_SEARCH_KEY = 'lumina_saved_searches';
+const THEME_KEY = 'lumina_theme';
+
+const els = {
+  notesList: document.getElementById('notes-list'),
+  editorEmpty: document.getElementById('editor-empty'),
+  editorActive: document.getElementById('editor-active'),
+  editorTitle: document.getElementById('editor-title'),
+  editorBody: document.getElementById('editor-body'),
+  listTitle: document.getElementById('list-title'),
+  searchInput: document.getElementById('search-input'),
+  sortSelect: document.getElementById('sort-select'),
+  statWords: document.getElementById('stat-words'),
+  statChars: document.getElementById('stat-chars'),
+  statTime: document.getElementById('stat-time'),
+  statLinks: document.getElementById('stat-links'),
+  saveStatus: document.getElementById('save-status'),
+  meta: document.getElementById('editor-meta'),
+  btnPin: document.getElementById('btn-pin'),
+  btnFav: document.getElementById('btn-fav'),
+  btnArchive: document.getElementById('btn-archive'),
+  btnLock: document.getElementById('btn-lock'),
+  tagsList: document.getElementById('tags-list'),
+  savedList: document.getElementById('saved-list'),
+  savedTitle: document.getElementById('saved-title'),
+  btnEmptyTrash: document.getElementById('btn-empty-trash'),
+  editorView: document.getElementById('editor-view'),
+  boardView: document.getElementById('board-view'),
+  graphView: document.getElementById('graph-view'),
+  tagFilterPanel: document.getElementById('tag-filter-panel'),
+  activeFilterChips: document.getElementById('active-filter-chips')
+};
+
+const TEMPLATES = [
+  {name:'Meeting Notes', icon:'📝', content:'<h2>Meeting Notes</h2><p><b>Date:</b> </p><p><b>Attendees:</b> </p><h3>Agenda</h3><ul><li></li></ul><h3>Action Items</h3><ul><li></li></ul>'},
+  {name:'Daily Journal', icon:'📔', content:'<h2>Daily Journal</h2><p><b>Mood:</b> </p><h3>Today I...</h3><p></p><h3>Grateful for</h3><ul><li></li></ul>'},
+  {name:'Project Plan', icon:'📋', content:'<h2>Project Plan</h2><h3>Goal</h3><p></p><h3>Milestones</h3><ul><li></li></ul><h3>Risks</h3><ul><li></li></ul>'},
+  {name:'Todo Checklist', icon:'✅', content:'<h2>Checklist</h2><ul class="checklist" style="list-style:none;padding-left:4px;"><li><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox"> Task 1</label></li></ul>'},
+  {name:'Cornell Notes', icon:'🎓', content:'<h2>Cornell Notes</h2><table><tr><th>Cues</th><th>Notes</th></tr><tr><td></td><td></td></tr></table><h3>Summary</h3><p></p>'},
+  {name:'Blank', icon:'📄', content:''}
+];
+
+/* ============ Init ============ */
+function init() {
+  loadTheme();
+  loadNotes();
+  loadBoards();
+  loadSavedSearches();
+  setupEventListeners();
+  setupClipboardPaste();
+  setupWikiLinkHandlers();
+  renderNotes();
+  renderTagsSidebar();
+  renderSavedSearches();
+  updateCounts();
+
+  const lastActive = localStorage.getItem('lumina_last_active');
+  if (lastActive && notes.find(n => n.id === lastActive && !n.trashed)) openNote(lastActive);
+}
+
+function loadNotes() {
+  const data = localStorage.getItem(STORAGE_KEY);
+  if (data) { try { notes = JSON.parse(data); } catch (e) { notes = []; } }
+}
+function saveNotes() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  if (activeNoteId) localStorage.setItem('lumina_last_active', activeNoteId);
+  updateCounts();
+  renderTagsSidebar();
+}
+
+const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+const formatDate = (ts) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const stripHtml = (html) => { const tmp = document.createElement('DIV'); tmp.innerHTML = html; return tmp.textContent || tmp.innerText || ''; };
+const extractTags = (text) => { const m = text.match(/#[\w-]+/g); return m ? [...new Set(m.map(t => t.toLowerCase()))] : []; };
+
+let saveTimeout;
+function scheduleSave() {
+  els.saveStatus.textContent = 'Saving...';
+  els.saveStatus.style.color = 'var(--warning)';
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    syncActiveNoteToState();
+    els.saveStatus.textContent = 'Saved';
+    els.saveStatus.style.color = 'var(--success)';
+  }, 500);
+}
+
+/* ============ Note CRUD ============ */
+function createNewNote(templateContent) {
+  const newNote = {
+    id: generateId(), title: '', content: templateContent || '', plainText: '',
+    tags: [], links: [], created: Date.now(), updated: Date.now(),
+    pinned: false, favorite: false, archived: false, trashed: false,
+    isLocked: false, password: ''
+  };
+  notes.unshift(newNote);
+  saveNotes();
+  setFilter('all');
+  openNote(newNote.id);
+  if (!templateContent) els.editorTitle.focus();
+}
+
+function openNote(id) {
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  if (note.isLocked) {
+    showPasswordModal('Locked Note', 'Enter password to view content', (pass) => {
+      if (pass === note.password) proceedOpenNote(id); else alert('Incorrect Password!');
+    });
+    return;
+  }
+  proceedOpenNote(id);
+}
+
+function proceedOpenNote(id) {
+  closeBoardView(true); closeGraphView(true);
+  activeNoteId = id;
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  els.editorEmpty.style.display = 'none';
+  els.editorActive.style.display = 'flex';
+  els.editorTitle.value = note.title;
+  els.editorBody.innerHTML = note.content;
+  updateEditorMeta(note);
+  updateStats();
+  highlightActiveCard();
+  managePlaceholder();
+  if (window.innerWidth <= 768) els.editorView.classList.add('active');
+}
+
+function syncActiveNoteToState() {
+  if (!activeNoteId) return;
+  const note = notes.find(n => n.id === activeNoteId);
+  if (!note) return;
+  const newTitle = els.editorTitle.value.trim();
+  const newContent = els.editorBody.innerHTML;
+  const newText = stripHtml(newContent);
+  const detectedTags = extractTags(newTitle + ' ' + newText);
+  const linkedIds = [...els.editorBody.querySelectorAll('.wiki-link')].map(el => el.dataset.noteId).filter(Boolean);
+
+  note.title = newTitle;
+  note.content = newContent;
+  note.plainText = newText;
+  note.tags = detectedTags;
+  note.links = [...new Set(linkedIds)];
+  note.updated = Date.now();
+
+  saveNotes();
+  renderNotes();
+  updateEditorMeta(note);
+  updateStats();
+}
+
+function toggleNoteProperty(prop) {
+  if (!activeNoteId) return;
+  const note = notes.find(n => n.id === activeNoteId);
+  if (note) { note[prop] = !note[prop]; note.updated = Date.now(); saveNotes(); renderNotes(); updateEditorMeta(note); }
+}
+
+function duplicateNote() {
+  if (!activeNoteId) return;
+  const note = notes.find(n => n.id === activeNoteId);
+  if (note) {
+    const dup = { ...note, id: generateId(), title: note.title + ' (Copy)', created: Date.now(), updated: Date.now() };
+    notes.unshift(dup); saveNotes(); renderNotes(); openNote(dup.id);
+  }
+}
+
+function trashCurrentNote() {
+  if (!activeNoteId) return;
+  const note = notes.find(n => n.id === activeNoteId);
+  if (note) {
+    note.trashed = true; activeNoteId = null; saveNotes(); closeMobileEditor();
+    els.editorEmpty.style.display = 'flex'; els.editorActive.style.display = 'none';
+    renderNotes();
+  }
+}
+function restoreNote(id) { const note = notes.find(n => n.id === id); if (note) { note.trashed = false; saveNotes(); renderNotes(); } }
+function emptyTrashPrompt() { if (confirm('Permanently delete all notes in Trash?')) { notes = notes.filter(n => !n.trashed); saveNotes(); renderNotes(); } }
+
+/* ============ Filters / Search ============ */
+function setFilter(filter) {
+  closeBoardView(true); closeGraphView(true);
+  currentFilter = filter; currentTagFilter = null;
+  document.querySelectorAll('.sidebar .nav-item[data-filter]').forEach(el => el.classList.remove('active'));
+  const filterEl = document.querySelector(`[data-filter="${filter}"]`);
+  if (filterEl) filterEl.classList.add('active');
+  els.btnEmptyTrash.style.display = filter === 'trash' ? 'block' : 'none';
+  els.listTitle.textContent = filter.charAt(0).toUpperCase() + filter.slice(1);
+  document.getElementById('sidebar').classList.remove('open');
+  renderNotes();
+}
+
+function filterByTag(tag) {
+  currentTagFilter = tag; currentFilter = 'tag';
+  els.listTitle.textContent = `Tag: ${tag}`;
+  document.getElementById('sidebar').classList.remove('open');
+  renderNotes();
+}
+
+function handleSearch() { searchQuery = els.searchInput.value.toLowerCase(); renderNotes(); renderActiveFilterChips(); }
+
+function toggleTagFilterPanel() {
+  const panel = els.tagFilterPanel;
+  if (panel.style.display === 'none' || !panel.style.display) {
+    const allTags = new Set();
+    notes.filter(n => !n.trashed).forEach(n => (n.tags || []).forEach(t => allTags.add(t)));
+    panel.innerHTML = '';
+    if (allTags.size === 0) panel.innerHTML = '<span style="font-size:.75rem;color:var(--text-faint);">No tags yet</span>';
+    allTags.forEach(tag => {
+      const chip = document.createElement('div');
+      chip.className = 'filter-chip';
+      chip.style.background = activeTagFilters.has(tag) ? 'var(--accent-soft)' : 'rgba(255,255,255,0.05)';
+      chip.style.color = activeTagFilters.has(tag) ? 'var(--accent)' : 'var(--text-muted)';
+      chip.textContent = tag;
+      chip.onclick = () => { activeTagFilters.has(tag) ? activeTagFilters.delete(tag) : activeTagFilters.add(tag); toggleTagFilterPanel(); toggleTagFilterPanel(); renderNotes(); renderActiveFilterChips(); };
+      panel.appendChild(chip);
+    });
+    panel.style.display = 'flex';
+  } else panel.style.display = 'none';
+}
+
+function renderActiveFilterChips() {
+  els.activeFilterChips.innerHTML = '';
+  activeTagFilters.forEach(tag => {
+    const chip = document.createElement('div');
+    chip.className = 'filter-chip';
+    chip.innerHTML = `${tag} <span class="x">✕</span>`;
+    chip.onclick = () => { activeTagFilters.delete(tag); renderNotes(); renderActiveFilterChips(); };
+    els.activeFilterChips.appendChild(chip);
+  });
+}
+
+/* Fuzzy scoring: substring match ranks highest, else ordered-subsequence score */
+function fuzzyScore(text, query) {
+  text = (text || '').toLowerCase(); query = (query || '').toLowerCase();
+  if (!query) return 0;
+  const idx = text.indexOf(query);
+  if (idx !== -1) return 1000 - idx;
+  let ti = 0, score = 0, consecutive = 0;
+  for (let qi = 0; qi < query.length; qi++) {
+    const found = text.indexOf(query[qi], ti);
+    if (found === -1) return -1;
+    score += (found === ti) ? 5 + consecutive : 1;
+    consecutive = (found === ti) ? consecutive + 1 : 0;
+    ti = found + 1;
+  }
+  return score;
+}
+
+function renderNotes() {
+  els.notesList.innerHTML = '';
+  let filtered = notes.filter(n => {
+    if (currentFilter === 'trash') return n.trashed;
+    if (n.trashed) return false;
+    if (currentTagFilter) { if (!(n.tags || []).includes(currentTagFilter)) return false; }
+    if (activeTagFilters.size > 0) { if (![...activeTagFilters].every(t => (n.tags || []).includes(t))) return false; }
+    if (currentFilter === 'pinned') return n.pinned && !n.archived;
+    if (currentFilter === 'favorites') return n.favorite && !n.archived;
+    if (currentFilter === 'archived') return n.archived;
+    return !n.archived;
+  });
+
+  let scored = null;
+  if (searchQuery) {
+    scored = filtered.map(n => {
+      const s = Math.max(fuzzyScore(n.title, searchQuery), fuzzyScore(n.plainText, searchQuery) - 2, (n.tags||[]).some(t=>t.includes(searchQuery)) ? 50 : -1);
+      return { n, s };
+    }).filter(x => x.s > -1);
+    scored.sort((a, b) => b.s - a.s);
+    filtered = scored.map(x => x.n);
+  } else {
+    const sort = els.sortSelect.value;
+    filtered.sort((a, b) => {
+      if (a.pinned && !b.pinned && currentFilter !== 'trash') return -1;
+      if (!a.pinned && b.pinned && currentFilter !== 'trash') return 1;
+      if (sort === 'updatedDesc') return (b.updated || 0) - (a.updated || 0);
+      if (sort === 'createdDesc') return (b.created || 0) - (a.created || 0);
+      if (sort === 'alphaAsc') return (a.title || '').localeCompare(b.title || '');
+      return 0;
+    });
+  }
+
+  if (filtered.length === 0) {
+    els.notesList.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:.85rem;">No notes found.</div>`;
+    return;
+  }
+
+  filtered.forEach(note => {
+    const card = document.createElement('div');
+    card.className = `note-card ${note.id === activeNoteId ? 'active' : ''}`;
+    card.onclick = note.trashed ? () => restoreNote(note.id) : () => openNote(note.id);
+    const title = note.title || 'Untitled Note';
+    let iconsHtml = '';
+    if (note.isLocked) iconsHtml += `<svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`;
+    if (note.pinned) iconsHtml += `<svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`;
+    if ((note.links || []).length) iconsHtml += `<svg viewBox="0 0 24 24"><path d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v-2H8v2z"/></svg>`;
+    const tagsHtml = (note.tags || []).map(t => `<span class="tag-pill">${t}</span>`).join('');
+    let preview = note.isLocked ? '🔒 Locked Content' : ((note.plainText || '').substring(0, 80) || 'Empty note');
+    if (searchQuery && !note.isLocked) {
+      const re = new RegExp('(' + searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+      preview = preview.replace(re, '<mark>$1</mark>');
+    }
+    card.innerHTML = `
+      <div class="nc-header"><div class="nc-title">${title}</div><div class="nc-icons">${iconsHtml}</div></div>
+      <div class="nc-preview">${preview}</div>
+      <div class="nc-tags">${tagsHtml}</div>
+      <div class="nc-meta">${formatDate(note.updated || Date.now())} ${note.trashed ? '• Click to Restore' : ''}</div>`;
+    els.notesList.appendChild(card);
+  });
+}
+
+function renderTagsSidebar() {
+  els.tagsList.innerHTML = '';
+  const allTags = new Set();
+  notes.filter(n => !n.trashed).forEach(n => (n.tags || []).forEach(t => allTags.add(t)));
+  allTags.forEach(tag => {
+    const el = document.createElement('div');
+    el.className = 'nav-item';
+    el.innerHTML = `<span style="color:var(--accent);">#</span> ${tag.replace('#', '')}`;
+    el.onclick = () => filterByTag(tag);
+    els.tagsList.appendChild(el);
+  });
+}
+
+function updateCounts() {
+  const activeNotes = notes.filter(n => !n.trashed);
+  document.getElementById('count-all').textContent = activeNotes.filter(n => !n.archived).length;
+  document.getElementById('count-pinned').textContent = activeNotes.filter(n => n.pinned && !n.archived).length;
+  document.getElementById('count-favorites').textContent = activeNotes.filter(n => n.favorite && !n.archived).length;
+  document.getElementById('count-archived').textContent = activeNotes.filter(n => n.archived).length;
+  document.getElementById('count-trash').textContent = notes.filter(n => n.trashed).length;
+}
+
+function highlightActiveCard() { document.querySelectorAll('.note-card').forEach(c => c.classList.remove('active')); }
+
+function updateEditorMeta(note) {
+  els.meta.textContent = `Last edited: ${formatDate(note.updated || Date.now())}`;
+  els.btnPin.classList.toggle('active', !!note.pinned);
+  els.btnFav.classList.toggle('active', !!note.favorite);
+  els.btnArchive.classList.toggle('active', !!note.archived);
+  els.btnLock.classList.toggle('active', !!note.isLocked);
+}
+
+function updateStats() {
+  const text = els.editorBody.innerText || '';
+  const words = text.split(/\s+/).filter(w => w.length > 0).length;
+  const chars = text.length;
+  const readTime = Math.max(1, Math.ceil(words / 200));
+  const linkCount = els.editorBody.querySelectorAll('.wiki-link').length;
+  els.statWords.textContent = `${words} words`;
+  els.statChars.textContent = `${chars} chars`;
+  els.statTime.textContent = `${readTime} min read`;
+  els.statLinks.textContent = `${linkCount} links`;
+}
+
+/* ============ Saved Searches ============ */
+function loadSavedSearches() {
+  const data = localStorage.getItem(SAVED_SEARCH_KEY);
+  if (data) { try { savedSearches = JSON.parse(data); } catch (e) { savedSearches = []; } }
+}
+function persistSavedSearches() { localStorage.setItem(SAVED_SEARCH_KEY, JSON.stringify(savedSearches)); }
+
+function saveCurrentSearch() {
+  const q = els.searchInput.value.trim();
+  if (!q && activeTagFilters.size === 0) { alert('আগে কিছু সার্চ করো বা ট্যাগ ফিল্টার সিলেক্ট করো'); return; }
+  const name = prompt('এই সার্চটির একটা নাম দাও:', q || [...activeTagFilters].join(', '));
+  if (!name) return;
+  savedSearches.push({ id: generateId(), name, query: q, tags: [...activeTagFilters] });
+  persistSavedSearches();
+  renderSavedSearches();
+}
+
+function renderSavedSearches() {
+  els.savedList.innerHTML = '';
+  els.savedTitle.style.display = savedSearches.length ? 'block' : 'none';
+  savedSearches.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'nav-item';
+    el.innerHTML = `<span>☆</span> ${s.name} <span class="badge x-del" style="cursor:pointer;">✕</span>`;
+    el.onclick = (e) => {
+      if (e.target.classList.contains('x-del')) { savedSearches = savedSearches.filter(x => x.id !== s.id); persistSavedSearches(); renderSavedSearches(); return; }
+      applySavedSearch(s);
+    };
+    els.savedList.appendChild(el);
+  });
+}
+
+function applySavedSearch(s) {
+  setFilter('all');
+  els.searchInput.value = s.query || '';
+  searchQuery = (s.query || '').toLowerCase();
+  activeTagFilters = new Set(s.tags || []);
+  renderNotes(); renderActiveFilterChips();
+}
+
+/* ============ Property helpers / meta actions unchanged below ============ */
+function closeMobileEditor() { els.editorView.classList.remove('active'); }
+function toggleZenMode() { document.body.classList.toggle('zen-mode'); }
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const target = current === 'dark' ? 'light' : (current === 'light' ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', target);
+  localStorage.setItem(THEME_KEY, target);
+}
+function loadTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  document.documentElement.setAttribute('data-theme', saved || 'dark');
+}
+
+function managePlaceholder() {
+  if (els.editorBody.textContent.trim() === '') els.editorBody.setAttribute('empty', '');
+  else els.editorBody.removeAttribute('empty');
+}
+
+/* ============ Password Lock ============ */
+function toggleLockPrompt() {
+  if (!activeNoteId) return;
+  const note = notes.find(n => n.id === activeNoteId);
+  if (!note) return;
+  if (note.isLocked) {
+    showPasswordModal('Unlock Note', 'Enter password to unlock note', (pass) => {
+      if (pass === note.password) { note.isLocked = false; note.password = ''; saveNotes(); updateEditorMeta(note); }
+      else alert('Wrong Password!');
+    });
+  } else {
+    showPasswordModal('Set Password', 'Set password to protect this note', (pass) => {
+      if (pass) { note.isLocked = true; note.password = pass; saveNotes(); updateEditorMeta(note); }
+    });
+  }
+}
+function showPasswordModal(title, desc, callback) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-desc').textContent = desc;
+  document.getElementById('modal-pass-input').value = '';
+  document.getElementById('password-modal').style.display = 'flex';
+  document.getElementById('modal-pass-input').focus();
+  modalCallback = callback;
+}
+function closePasswordModal() { document.getElementById('password-modal').style.display = 'none'; }
+function submitPasswordModal() {
+  const val = document.getElementById('modal-pass-input').value;
+  if (modalCallback) { closePasswordModal(); modalCallback(val); }
+}
+
+/* ============ Command Palette ============ */
+function openCommandPalette() {
+  document.getElementById('command-palette').style.display = 'flex';
+  document.getElementById('cmd-input').value = '';
+  document.getElementById('cmd-input').focus();
+  handleCommandSearch();
+}
+function closeCommandPalette() { document.getElementById('command-palette').style.display = 'none'; }
+function handleCommandSearch() {
+  const query = document.getElementById('cmd-input').value.toLowerCase();
+  const list = document.getElementById('cmd-list');
+  list.innerHTML = '';
+  const actions = [
+    { name: '+ Create New Note', action: () => { createNewNote(); closeCommandPalette(); } },
+    { name: 'New from Template', action: () => { closeCommandPalette(); openTemplatesModal(); } },
+    { name: 'Open Graph View', action: () => { closeCommandPalette(); openGraphView(); } },
+    { name: 'Open Boards', action: () => { closeCommandPalette(); openBoardView(); } },
+    { name: 'Toggle Theme (Light/Dark)', action: () => { toggleTheme(); closeCommandPalette(); } },
+    { name: 'Toggle Zen Mode', action: () => { toggleZenMode(); closeCommandPalette(); } },
+    { name: 'Export Backup JSON', action: () => { triggerBackup(); closeCommandPalette(); } },
+    { name: 'Open Settings & Cloud Sync', action: () => { closeCommandPalette(); openSettingsModal(); } }
+  ];
+  actions.filter(a => a.name.toLowerCase().includes(query)).forEach(a => {
+    const item = document.createElement('div');
+    item.className = 'cmd-item';
+    item.innerHTML = `<span>⚡ ${a.name}</span><small>Action</small>`;
+    item.onclick = a.action;
+    list.appendChild(item);
+  });
+  notes.filter(n => !n.trashed && ((n.title || '').toLowerCase().includes(query) || (n.plainText || '').toLowerCase().includes(query)))
+    .slice(0, 5).forEach(n => {
+      const item = document.createElement('div');
+      item.className = 'cmd-item';
+      item.innerHTML = `<span>📄 ${n.title || 'Untitled'}</span><small>Note</small>`;
+      item.onclick = () => { openNote(n.id); closeCommandPalette(); };
+      list.appendChild(item);
+    });
+}
+
+/* ============ Templates ============ */
+function openTemplatesModal() {
+  const grid = document.getElementById('template-grid');
+  grid.innerHTML = '';
+  TEMPLATES.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.innerHTML = `<span class="ti">${t.icon}</span>${t.name}`;
+    card.onclick = () => { closeTemplatesModal(); createNewNote(t.content); };
+    grid.appendChild(card);
+  });
+  document.getElementById('templates-modal').style.display = 'flex';
+}
+function closeTemplatesModal() { document.getElementById('templates-modal').style.display = 'none'; }
+
+/* ============ Rich Editing ============ */
+function execCmd(cmd, value = null) { els.editorBody.focus(); document.execCommand(cmd, false, value); scheduleSave(); }
+
+function setupClipboardPaste() {
+  els.editorBody.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (let index in items) {
+      const item = items[index];
+      if (item.kind === 'file' && item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          document.execCommand('insertHTML', false, `<img src="${event.target.result}" alt="Pasted Screenshot"><p><br></p>`);
+          scheduleSave();
+        };
+        reader.readAsDataURL(blob);
+        break;
+      }
+    }
+  });
+}
+
+function insertCallout(type = 'info') {
+  document.execCommand('insertHTML', false, `<div class="callout callout-${type}" contenteditable="true">💡 <b>Note:</b> Type your callout here...</div><p><br></p>`);
+  scheduleSave();
+}
+function insertCodeBlock() { document.execCommand('insertHTML', false, `<pre><code>// Type your code here</code></pre><p><br></p>`); scheduleSave(); }
+function insertTable() { document.execCommand('insertHTML', false, `<table><tr><th>Header 1</th><th>Header 2</th></tr><tr><td>Data 1</td><td>Data 2</td></tr></table><p><br></p>`); scheduleSave(); }
+function insertChecklist() {
+  document.execCommand('insertHTML', false, `<ul class="checklist" style="list-style:none;padding-left:4px;"><li><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox"> New task</label></li></ul>`);
+  scheduleSave();
+}
+function triggerImageUpload() { document.getElementById('img-upload-input').click(); }
+function handleImageUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (evt) { document.execCommand('insertHTML', false, `<img src="${evt.target.result}" alt="Uploaded image"><p><br></p>`); scheduleSave(); };
+  reader.readAsDataURL(file);
+}
+
+/* ============ Wiki-links: [[Note Title]] autocomplete + chips ============ */
+let wikiState = { node: null, startOffset: 0, query: '', items: [], selIndex: 0 };
+
+function setupWikiLinkHandlers() {
+  els.editorBody.addEventListener('keyup', handleWikiTrigger);
+  els.editorBody.addEventListener('click', (e) => {
+    const chip = e.target.closest('.wiki-link');
+    if (chip) { e.preventDefault(); if (chip.dataset.noteId) openNote(chip.dataset.noteId); }
+  });
+  document.getElementById('wiki-autocomplete').addEventListener('mousedown', (e) => e.preventDefault());
+}
+
+function insertWikiTrigger() {
+  els.editorBody.focus();
+  document.execCommand('insertText', false, '[[');
+  handleWikiTrigger();
+}
+
+function handleWikiTrigger() {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) { closeWikiAutocomplete(); return; }
+  const range = sel.getRangeAt(0);
+  const node = range.startContainer;
+  if (node.nodeType !== 3) { closeWikiAutocomplete(); return; }
+  const textBefore = node.textContent.slice(0, range.startOffset);
+  const match = textBefore.match(/\[\[([^\[\]]*)$/);
+  if (match) {
+    wikiState.node = node;
+    wikiState.query = match[1];
+    wikiState.startOffset = range.startOffset - match[1].length - 2;
+    showWikiAutocomplete(range);
+  } else closeWikiAutocomplete();
+}
+
+function showWikiAutocomplete(range) {
+  const box = document.getElementById('wiki-autocomplete');
+  const q = wikiState.query.toLowerCase();
+  const items = notes.filter(n => !n.trashed && n.id !== activeNoteId && (n.title || 'Untitled').toLowerCase().includes(q)).slice(0, 8);
+  wikiState.items = items;
+  box.innerHTML = '';
+  if (items.length === 0) box.innerHTML = `<div class="wac-empty">লিখতে থাকো, নতুন নোট হিসেবে লিংক তৈরি হবে না — বিদ্যমান নোট টাইটেল ম্যাচ করলে দেখাবে।</div>`;
+  items.forEach((n, i) => {
+    const item = document.createElement('div');
+    item.className = 'wac-item' + (i === 0 ? ' sel' : '');
+    item.textContent = n.title || 'Untitled';
+    item.onclick = () => selectWikiLink(n);
+    box.appendChild(item);
+  });
+  try {
+    const rect = range.getBoundingClientRect();
+    box.style.left = rect.left + 'px';
+    box.style.top = (rect.bottom + 6) + 'px';
+    box.style.display = 'block';
+  } catch (e) { closeWikiAutocomplete(); }
+}
+
+function closeWikiAutocomplete() { document.getElementById('wiki-autocomplete').style.display = 'none'; wikiState.node = null; }
+
+function selectWikiLink(note) {
+  const node = wikiState.node;
+  if (!node) return;
+  const fullText = node.textContent;
+  const before = fullText.slice(0, wikiState.startOffset);
+  const after = fullText.slice(wikiState.startOffset + 2 + wikiState.query.length);
+  node.textContent = before;
+  const chip = document.createElement('span');
+  chip.className = 'wiki-link'; chip.contentEditable = 'false'; chip.dataset.noteId = note.id;
+  chip.textContent = note.title || 'Untitled';
+  const afterNode = document.createTextNode('\u00A0' + after);
+  node.parentNode.insertBefore(chip, node.nextSibling);
+  node.parentNode.insertBefore(afterNode, chip.nextSibling);
+  const range = document.createRange();
+  range.setStart(afterNode, 1); range.collapse(true);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  closeWikiAutocomplete();
+  scheduleSave();
+}
+
+/* ============ Boards (Kanban) ============ */
+function loadBoards() {
+  const data = localStorage.getItem(BOARDS_KEY);
+  if (data) { try { boards = JSON.parse(data); } catch (e) { boards = []; } }
+  if (boards.length === 0) {
+    boards = [{ id: generateId(), title: 'My Board', columns: [
+      { id: generateId(), title: 'To Do', cards: [] },
+      { id: generateId(), title: 'In Progress', cards: [] },
+      { id: generateId(), title: 'Done', cards: [] }
+    ]}];
+    saveBoards();
+  }
+  currentBoardId = boards[0].id;
+}
+function saveBoards() { localStorage.setItem(BOARDS_KEY, JSON.stringify(boards)); }
+
+function openBoardView() {
+  document.querySelectorAll('.sidebar .nav-item[data-filter]').forEach(el => el.classList.remove('active'));
+  document.getElementById('nav-boards').classList.add('active');
+  els.editorView.style.display = 'none';
+  document.querySelector('.list-view').style.display = 'none';
+  closeGraphView(true);
+  els.boardView.classList.add('active');
+  renderBoardSelect();
+  renderBoard();
+}
+function closeBoardView(silent) {
+  els.boardView.classList.remove('active');
+  els.editorView.style.display = 'flex';
+  document.querySelector('.list-view').style.display = 'flex';
+  if (!silent) document.getElementById('nav-boards').classList.remove('active');
+}
+
+function renderBoardSelect() {
+  const sel = document.getElementById('board-select');
+  sel.innerHTML = '';
+  boards.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.textContent = b.title; sel.appendChild(o); });
+  sel.value = currentBoardId;
+}
+function switchBoard(id) { currentBoardId = id; renderBoard(); }
+function createBoard() {
+  const name = prompt('New board name:', 'New Board'); if (!name) return;
+  const b = { id: generateId(), title: name, columns: [{ id: generateId(), title: 'To Do', cards: [] }] };
+  boards.push(b); currentBoardId = b.id; saveBoards(); renderBoardSelect(); renderBoard();
+}
+function renameCurrentBoard() {
+  const b = boards.find(x => x.id === currentBoardId); if (!b) return;
+  const name = prompt('Rename board:', b.title); if (!name) return;
+  b.title = name; saveBoards(); renderBoardSelect();
+}
+function deleteCurrentBoard() {
+  if (boards.length <= 1) { alert('অন্তত একটা board থাকতেই হবে।'); return; }
+  if (!confirm('এই বোর্ডটা মুছে ফেলবো?')) return;
+  boards = boards.filter(b => b.id !== currentBoardId);
+  currentBoardId = boards[0].id; saveBoards(); renderBoardSelect(); renderBoard();
+}
+
+function renderBoard() {
+  const wrap = document.getElementById('board-cols');
+  wrap.innerHTML = '';
+  const board = boards.find(b => b.id === currentBoardId);
+  if (!board) return;
+  board.columns.forEach(col => {
+    const colEl = document.createElement('div');
+    colEl.className = 'board-col';
+    colEl.innerHTML = `<div class="board-col-head"><span>${col.title} <span class="badge">${col.cards.length}</span></span>
+      <button class="icon-btn" style="color:var(--danger);" onclick="deleteColumn('${col.id}')">✕</button></div>
+      <div class="board-col-cards" id="col-${col.id}"></div>
+      <button class="board-add-card" onclick="addCard('${col.id}')">+ Add card</button>`;
+    wrap.appendChild(colEl);
+    const cardsWrap = colEl.querySelector('.board-col-cards');
+    col.cards.forEach(card => {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'board-card'; cardEl.draggable = true; cardEl.textContent = card.text;
+      cardEl.ondragstart = (e) => { dragCardInfo = { colId: col.id, cardId: card.id }; cardEl.classList.add('dragging'); };
+      cardEl.ondragend = () => cardEl.classList.remove('dragging');
+      cardEl.ondblclick = () => editCard(col.id, card.id);
+      cardsWrap.appendChild(cardEl);
+    });
+    cardsWrap.ondragover = (e) => { e.preventDefault(); cardsWrap.classList.add('drag-over'); };
+    cardsWrap.ondragleave = () => cardsWrap.classList.remove('drag-over');
+    cardsWrap.ondrop = (e) => { e.preventDefault(); cardsWrap.classList.remove('drag-over'); moveCard(col.id); };
+  });
+  const addColBtn = document.createElement('button');
+  addColBtn.className = 'board-add-col';
+  addColBtn.textContent = '+ Add column';
+  addColBtn.onclick = addColumn;
+  wrap.appendChild(addColBtn);
+}
+
+function addColumn() {
+  const board = boards.find(b => b.id === currentBoardId);
+  const name = prompt('Column name:', 'New Column'); if (!name) return;
+  board.columns.push({ id: generateId(), title: name, cards: [] });
+  saveBoards(); renderBoard();
+}
+function deleteColumn(colId) {
+  const board = boards.find(b => b.id === currentBoardId);
+  if (!confirm('এই কলামটা মুছবো?')) return;
+  board.columns = board.columns.filter(c => c.id !== colId);
+  saveBoards(); renderBoard();
+}
+function addCard(colId) {
+  const board = boards.find(b => b.id === currentBoardId);
+  const col = board.columns.find(c => c.id === colId);
+  const text = prompt('Card text:'); if (!text) return;
+  col.cards.push({ id: generateId(), text });
+  saveBoards(); renderBoard();
+}
+function editCard(colId, cardId) {
+  const board = boards.find(b => b.id === currentBoardId);
+  const col = board.columns.find(c => c.id === colId);
+  const card = col.cards.find(c => c.id === cardId);
+  const text = prompt('Edit card (blank + OK to delete):', card.text);
+  if (text === null) return;
+  if (text.trim() === '') col.cards = col.cards.filter(c => c.id !== cardId);
+  else card.text = text;
+  saveBoards(); renderBoard();
+}
+function moveCard(targetColId) {
+  if (!dragCardInfo) return;
+  const board = boards.find(b => b.id === currentBoardId);
+  const fromCol = board.columns.find(c => c.id === dragCardInfo.colId);
+  const cardIdx = fromCol.cards.findIndex(c => c.id === dragCardInfo.cardId);
+  if (cardIdx === -1) return;
+  const [card] = fromCol.cards.splice(cardIdx, 1);
+  const toCol = board.columns.find(c => c.id === targetColId);
+  toCol.cards.push(card);
+  dragCardInfo = null;
+  saveBoards(); renderBoard();
+}
+
+/* ============ Graph View ============ */
+function openGraphView() {
+  document.querySelectorAll('.sidebar .nav-item[data-filter]').forEach(el => el.classList.remove('active'));
+  document.getElementById('nav-graph').classList.add('active');
+  els.editorView.style.display = 'none';
+  document.querySelector('.list-view').style.display = 'none';
+  closeBoardView(true);
+  els.graphView.classList.add('active');
+  renderGraph();
+}
+function closeGraphView(silent) {
+  els.graphView.classList.remove('active');
+  els.editorView.style.display = 'flex';
+  document.querySelector('.list-view').style.display = 'flex';
+  if (!silent) document.getElementById('nav-graph').classList.remove('active');
+}
+
+function computeGraphLayout(nodeIds, edges, w, h) {
+  const pos = {};
+  nodeIds.forEach((id, i) => {
+    const angle = (2 * Math.PI * i) / Math.max(1, nodeIds.length);
+    pos[id] = { x: w / 2 + Math.min(w, h) * 0.32 * Math.cos(angle), y: h / 2 + Math.min(w, h) * 0.32 * Math.sin(angle), vx: 0, vy: 0 };
+  });
+  for (let iter = 0; iter < 220; iter++) {
+    for (let i = 0; i < nodeIds.length; i++) {
+      for (let j = i + 1; j < nodeIds.length; j++) {
+        const a = pos[nodeIds[i]], b = pos[nodeIds[j]];
+        let dx = a.x - b.x, dy = a.y - b.y;
+        let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const force = 2200 / (dist * dist);
+        dx /= dist; dy /= dist;
+        a.vx += dx * force; a.vy += dy * force; b.vx -= dx * force; b.vy -= dy * force;
+      }
+    }
+    edges.forEach(e => {
+      const a = pos[e.from], b = pos[e.to]; if (!a || !b) return;
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const force = (dist - 150) * 0.02;
+      dx /= dist; dy /= dist;
+      a.vx += dx * force; a.vy += dy * force; b.vx -= dx * force; b.vy -= dy * force;
+    });
+    nodeIds.forEach(id => {
+      const p = pos[id];
+      p.vx *= 0.82; p.vy *= 0.82; p.x += p.vx; p.y += p.vy;
+      p.x = Math.max(50, Math.min(w - 50, p.x)); p.y = Math.max(50, Math.min(h - 50, p.y));
+    });
+  }
+  return pos;
+}
+
+function renderGraph() {
+  const wrap = document.getElementById('graph-wrap');
+  const w = wrap.clientWidth || 900, h = wrap.clientHeight || 600;
+  const activeNotes = notes.filter(n => !n.trashed);
+  const nodeIds = activeNotes.map(n => n.id);
+  const edges = [];
+  activeNotes.forEach(n => (n.links || []).forEach(targetId => { if (nodeIds.includes(targetId)) edges.push({ from: n.id, to: targetId }); }));
+
+  if (nodeIds.length === 0) { wrap.innerHTML = `<div class="empty-state"><h3 style="font-family:var(--serif);font-weight:500;">এখনো কোনো নোট নেই</h3></div>`; return; }
+
+  const pos = computeGraphLayout(nodeIds, edges, w, h);
+  const degree = {}; nodeIds.forEach(id => degree[id] = 0);
+  edges.forEach(e => { degree[e.from]++; degree[e.to]++; });
+
+  let svg = `<svg width="${w}" height="${h}" style="display:block;">`;
+  edges.forEach(e => { const a = pos[e.from], b = pos[e.to]; svg += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--link)" stroke-opacity="0.45" stroke-width="1.4"/>`; });
+  nodeIds.forEach(id => {
+    const note = activeNotes.find(n => n.id === id);
+    const p = pos[id];
+    const r = 7 + Math.min(10, degree[id] * 2);
+    const isLinked = degree[id] > 0;
+    svg += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${isLinked ? 'var(--accent)' : 'var(--text-faint)'}" fill-opacity="0.9" style="cursor:pointer;" onclick="openNoteFromGraph('${id}')"/>`;
+    svg += `<text x="${p.x}" y="${p.y - r - 6}" text-anchor="middle" font-size="12" fill="var(--text-main)" class="graph-node-label">${(note.title || 'Untitled').slice(0, 22)}</text>`;
+  });
+  svg += `</svg>`;
+  wrap.innerHTML = svg;
+}
+function openNoteFromGraph(id) { closeGraphView(); openNote(id); }
+
+/* ============ Export / Backup / Restore ============ */
+function exportMarkdown() {
+  if (!activeNoteId) return alert('Select a note to export!');
+  const note = notes.find(n => n.id === activeNoteId);
+  if (!note) return;
+  const content = `# ${note.title || 'Untitled'}\n\n${stripHtml(note.content)}`;
+  const blob = new Blob([content], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${(note.title || 'note').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+  a.click();
+}
+function triggerBackup() {
+  const payload = { notes, boards, savedSearches, exportedAt: Date.now() };
+  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+  const dl = document.createElement('a');
+  dl.setAttribute('href', dataStr);
+  dl.setAttribute('download', `lumina_notes_backup_${Date.now()}.json`);
+  document.body.appendChild(dl); dl.click(); dl.remove();
+}
+function openRestoreDialog() { document.getElementById('restore-file-input').click(); }
+function processRestore(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const parsed = JSON.parse(e.target.result.trim());
+      const noteArray = Array.isArray(parsed) ? parsed : (parsed.notes || []);
+      if (!Array.isArray(noteArray)) { alert('Invalid backup structure.'); return; }
+      if (!confirm(`Restoring will import ${noteArray.length} notes. Proceed?`)) return;
+      notes = noteArray.map(n => ({
+        id: n.id || generateId(), title: n.title || '', content: n.content || '',
+        plainText: n.plainText || stripHtml(n.content || ''),
+        tags: n.tags || extractTags((n.title || '') + ' ' + stripHtml(n.content || '')),
+        links: n.links || [], created: n.created || Date.now(), updated: n.updated || Date.now(),
+        pinned: !!n.pinned, favorite: !!n.favorite, archived: !!n.archived, trashed: !!n.trashed,
+        isLocked: !!n.isLocked, password: n.password || ''
+      }));
+      if (parsed.boards) { boards = parsed.boards; saveBoards(); }
+      if (parsed.savedSearches) { savedSearches = parsed.savedSearches; persistSavedSearches(); }
+      saveNotes(); setFilter('all'); renderNotes(); renderTagsSidebar(); renderSavedSearches();
+      alert('Backup restored successfully!');
+    } catch (err) { console.error('Restore error:', err); alert('Failed to parse JSON file. Please check file format.'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+/* ============ Google Drive Sync ============ */
+let gisTokenClient = null;
+let driveAccessToken = null;
+
+function openSettingsModal() {
+  document.getElementById('gdrive-client-id').value = localStorage.getItem('lumina_gdrive_client_id') || '';
+  document.getElementById('settings-modal').style.display = 'flex';
+}
+function closeSettingsModal() { document.getElementById('settings-modal').style.display = 'none'; }
+
+function saveDriveClientId() {
+  const id = document.getElementById('gdrive-client-id').value.trim();
+  if (!id) { alert('Client ID দাও'); return; }
+  localStorage.setItem('lumina_gdrive_client_id', id);
+  document.getElementById('gdrive-status').textContent = 'Client ID saved. এখন Connect চাপো।';
+}
+
+function ensureGisLoaded(cb) {
+  if (window.google && window.google.accounts && window.google.accounts.oauth2) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.onload = cb;
+  s.onerror = () => { document.getElementById('gdrive-status').textContent = '❌ Google script লোড করা যায়নি (নেটওয়ার্ক/অরিজিন সমস্যা)'; };
+  document.head.appendChild(s);
+}
+
+function driveConnect() {
+  const clientId = localStorage.getItem('lumina_gdrive_client_id');
+  if (!clientId) { alert('আগে Client ID সেভ করো'); return; }
+  const status = document.getElementById('gdrive-status');
+  status.textContent = 'Loading Google auth...';
+  ensureGisLoaded(() => {
+    gisTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/drive.appdata',
+      callback: (resp) => {
+        if (resp.error) { status.textContent = 'Error: ' + resp.error; return; }
+        driveAccessToken = resp.access_token;
+        status.textContent = '✅ Connected to Google Drive';
+      }
+    });
+    gisTokenClient.requestAccessToken();
+  });
+}
+
+async function driveFindFile() {
+  const res = await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27lumina_notes_backup.json%27", {
+    headers: { Authorization: 'Bearer ' + driveAccessToken }
+  });
+  const data = await res.json();
+  return (data.files && data.files[0]) || null;
+}
+
+async function driveSyncUp() {
+  const status = document.getElementById('gdrive-status');
+  if (!driveAccessToken) { alert('আগে Connect করো'); return; }
+  status.textContent = 'Syncing...';
+  try {
+    const existing = await driveFindFile();
+    const payload = JSON.stringify({ notes, boards, savedSearches, exportedAt: Date.now() });
+    const metadata = { name: 'lumina_notes_backup.json', mimeType: 'application/json' };
+    if (!existing) metadata.parents = ['appDataFolder'];
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', new Blob([payload], { type: 'application/json' }));
+    const url = existing
+      ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`
+      : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+    const res = await fetch(url, { method: existing ? 'PATCH' : 'POST', headers: { Authorization: 'Bearer ' + driveAccessToken }, body: form });
+    status.textContent = res.ok ? ('✅ Synced at ' + new Date().toLocaleTimeString()) : '❌ Sync failed';
+  } catch (e) { status.textContent = '❌ Sync error: ' + e.message; }
+}
+
+async function driveSyncDown() {
+  const status = document.getElementById('gdrive-status');
+  if (!driveAccessToken) { alert('আগে Connect করো'); return; }
+  try {
+    const file = await driveFindFile();
+    if (!file) { status.textContent = 'কোনো ব্যাকআপ পাওয়া যায়নি।'; return; }
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, { headers: { Authorization: 'Bearer ' + driveAccessToken } });
+    const data = await res.json();
+    if (!confirm('Drive থেকে notes restore করলে বর্তমান notes replace হয়ে যাবে। এগোবে?')) return;
+    notes = data.notes || [];
+    if (data.boards) boards = data.boards;
+    if (data.savedSearches) savedSearches = data.savedSearches;
+    saveNotes(); saveBoards(); persistSavedSearches();
+    renderNotes(); renderTagsSidebar(); renderSavedSearches();
+    status.textContent = '✅ Restored from Drive';
+  } catch (e) { status.textContent = '❌ Restore error: ' + e.message; }
+}
+
+/* ============ Setup ============ */
+function setupEventListeners() {
+  els.editorTitle.addEventListener('input', scheduleSave);
+  els.editorBody.addEventListener('input', () => { managePlaceholder(); scheduleSave(); });
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openCommandPalette(); }
+    if (e.key === 'Escape') { closeCommandPalette(); closeWikiAutocomplete(); }
+  });
+  window.addEventListener('resize', () => { if (els.graphView.classList.contains('active')) renderGraph(); });
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
