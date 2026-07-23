@@ -1335,6 +1335,31 @@ function processRestore(event) {
 let gisTokenClient = null;
 let driveAccessToken = null;
 
+function autoConnectDrive() {
+  const clientId = localStorage.getItem('lumina_gdrive_client_id');
+  if (!clientId) return;
+
+  ensureGisLoaded(() => {
+    gisTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/drive.appdata',
+      callback: (resp) => {
+        if (!resp.error) {
+          driveAccessToken = resp.access_token;
+          const status = document.getElementById('gdrive-status');
+          if (status) status.textContent = '✅ Connected to Google Drive';
+        }
+      }
+    });
+    
+    try {
+      gisTokenClient.requestAccessToken({ prompt: '' });
+    } catch(e) {
+      console.log('Silent auto-connect failed:', e);
+    }
+  });
+}
+
 function openSettingsModal() {
   document.getElementById('gdrive-client-id').value = localStorage.getItem('lumina_gdrive_client_id') || '';
   document.getElementById('settings-modal').style.display = 'flex';
@@ -1346,6 +1371,7 @@ function saveDriveClientId() {
   if (!id) { alert('Client ID দাও'); return; }
   localStorage.setItem('lumina_gdrive_client_id', id);
   document.getElementById('gdrive-status').textContent = 'Client ID saved. এখন Connect চাপো।';
+  autoConnectDrive();
 }
 
 function ensureGisLoaded(cb) {
@@ -1433,7 +1459,10 @@ function setupEventListeners() {
   window.addEventListener('resize', () => { if (els.graphView.classList.contains('active')) renderGraph(); });
 }
 
-window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('DOMContentLoaded', () => {
+  init();
+  autoConnectDrive();
+});
 </script>
 </body>
 </html>
