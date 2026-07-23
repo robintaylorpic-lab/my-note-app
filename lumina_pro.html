@@ -1335,31 +1335,6 @@ function processRestore(event) {
 let gisTokenClient = null;
 let driveAccessToken = null;
 
-function autoConnectDrive() {
-  const clientId = localStorage.getItem('lumina_gdrive_client_id');
-  if (!clientId) return;
-
-  ensureGisLoaded(() => {
-    gisTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/drive.appdata',
-      callback: (resp) => {
-        if (!resp.error) {
-          driveAccessToken = resp.access_token;
-          const status = document.getElementById('gdrive-status');
-          if (status) status.textContent = '✅ Connected to Google Drive';
-        }
-      }
-    });
-    
-    try {
-      gisTokenClient.requestAccessToken({ prompt: '' });
-    } catch(e) {
-      console.log('Silent auto-connect failed:', e);
-    }
-  });
-}
-
 function openSettingsModal() {
   document.getElementById('gdrive-client-id').value = localStorage.getItem('lumina_gdrive_client_id') || '';
   document.getElementById('settings-modal').style.display = 'flex';
@@ -1371,7 +1346,6 @@ function saveDriveClientId() {
   if (!id) { alert('Client ID দাও'); return; }
   localStorage.setItem('lumina_gdrive_client_id', id);
   document.getElementById('gdrive-status').textContent = 'Client ID saved. এখন Connect চাপো।';
-  autoConnectDrive();
 }
 
 function ensureGisLoaded(cb) {
@@ -1379,23 +1353,30 @@ function ensureGisLoaded(cb) {
   const s = document.createElement('script');
   s.src = 'https://accounts.google.com/gsi/client';
   s.onload = cb;
-  s.onerror = () => { document.getElementById('gdrive-status').textContent = '❌ Google script লোড করা যায়নি (নেটওয়ার্ক/অরিজিন সমস্যা)'; };
+  s.onerror = () => { 
+    const status = document.getElementById('gdrive-status');
+    if (status) status.textContent = '❌ Google script লোড করা যায়নি (নেটওয়ার্ক/অরিজিন সমস্যা)'; 
+  };
   document.head.appendChild(s);
 }
 
-function driveConnect() {
+function driveConnect(callback) {
   const clientId = localStorage.getItem('lumina_gdrive_client_id');
   if (!clientId) { alert('আগে Client ID সেভ করো'); return; }
   const status = document.getElementById('gdrive-status');
-  status.textContent = 'Loading Google auth...';
+  if (status) status.textContent = 'Loading Google auth...';
   ensureGisLoaded(() => {
     gisTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: 'https://www.googleapis.com/auth/drive.appdata',
       callback: (resp) => {
-        if (resp.error) { status.textContent = 'Error: ' + resp.error; return; }
+        if (resp.error) { 
+          if (status) status.textContent = 'Error: ' + resp.error; 
+          return; 
+        }
         driveAccessToken = resp.access_token;
-        status.textContent = '✅ Connected to Google Drive';
+        if (status) status.textContent = '✅ Connected to Google Drive';
+        if (typeof callback === 'function') callback();
       }
     });
     gisTokenClient.requestAccessToken();
@@ -1411,9 +1392,12 @@ async function driveFindFile() {
 }
 
 async function driveSyncUp() {
+  if (!driveAccessToken) {
+    driveConnect(() => driveSyncUp());
+    return;
+  }
   const status = document.getElementById('gdrive-status');
-  if (!driveAccessToken) { alert('আগে Connect করো'); return; }
-  status.textContent = 'Syncing...';
+  if (status) status.textContent = 'Syncing...';
   try {
     const existing = await driveFindFile();
     const payload = JSON.stringify({ notes, boards, savedSearches, exportedAt: Date.now() });
@@ -1426,16 +1410,20 @@ async function driveSyncUp() {
       ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`
       : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
     const res = await fetch(url, { method: existing ? 'PATCH' : 'POST', headers: { Authorization: 'Bearer ' + driveAccessToken }, body: form });
-    status.textContent = res.ok ? ('✅ Synced at ' + new Date().toLocaleTimeString()) : '❌ Sync failed';
-  } catch (e) { status.textContent = '❌ Sync error: ' + e.message; }
+    if (status) status.textContent = res.ok ? ('✅ Synced at ' + new Date().toLocaleTimeString()) : '❌ Sync failed';
+    if (res.ok) alert('Successfully synced to Google Drive!');
+  } catch (e) { if (status) status.textContent = '❌ Sync error: ' + e.message; }
 }
 
 async function driveSyncDown() {
+  if (!driveAccessToken) {
+    driveConnect(() => driveSyncDown());
+    return;
+  }
   const status = document.getElementById('gdrive-status');
-  if (!driveAccessToken) { alert('আগে Connect করো'); return; }
   try {
     const file = await driveFindFile();
-    if (!file) { status.textContent = 'কোনো ব্যাকআপ পাওয়া যায়নি।'; return; }
+    if (!file) { if (status) status.textContent = 'কোনো ব্যাকআপ পাওয়া যায়নি।'; alert('No backup file found in Drive!'); return; }
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, { headers: { Authorization: 'Bearer ' + driveAccessToken } });
     const data = await res.json();
     if (!confirm('Drive থেকে notes restore করলে বর্তমান notes replace হয়ে যাবে। এগোবে?')) return;
@@ -1444,8 +1432,9 @@ async function driveSyncDown() {
     if (data.savedSearches) savedSearches = data.savedSearches;
     saveNotes(); saveBoards(); persistSavedSearches();
     renderNotes(); renderTagsSidebar(); renderSavedSearches();
-    status.textContent = '✅ Restored from Drive';
-  } catch (e) { status.textContent = '❌ Restore error: ' + e.message; }
+    if (status) status.textContent = '✅ Restored from Drive';
+    alert('Successfully restored from Google Drive!');
+  } catch (e) { if (status) status.textContent = '❌ Restore error: ' + e.message; }
 }
 
 /* ============ Setup ============ */
@@ -1461,7 +1450,6 @@ function setupEventListeners() {
 
 window.addEventListener('DOMContentLoaded', () => {
   init();
-  autoConnectDrive();
 });
 </script>
 </body>
