@@ -6,7 +6,7 @@
 <title>Lumina Pro — Notes, Linked</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0b0c10; --bg-elevated:#15171d; --glass-bg:rgba(19,21,27,0.74); --glass-border:rgba(255,255,255,0.08);
@@ -112,20 +112,33 @@ body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;}
 .wiki-link:hover{background:rgba(95,179,163,0.28);}
 .editor-footer{padding:8px 25px;font-size:.73rem;color:var(--text-faint);border-top:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;}
 
-/* Tracker Badge */
+/* Strict Inline Tracker Badge CSS Fix */
 .client-tracker-badge {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  justify-content: center;
+  background: rgba(201, 161, 92, 0.22);
+  color: #f5d070;
+  border: 1px solid #e0b368;
   border-radius: 12px;
-  padding: 2px 8px;
-  font-size: 0.78rem;
+  padding: 2px 10px;
+  font-size: 0.85rem;
   font-family: var(--mono);
   font-weight: 600;
-  margin: 0 6px;
+  letter-spacing: 0.3px;
+  text-shadow: 0 0 8px rgba(245, 208, 112, 0.25);
+  margin-left: 10px !important;
+  margin-right: 4px !important;
   user-select: none;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+[data-theme="light"] .client-tracker-badge {
+  background: rgba(169, 121, 58, 0.15);
+  color: #8c5311;
+  border-color: #a9793a;
+  text-shadow: none;
 }
 
 /* Color picker wrapper */
@@ -360,7 +373,7 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:2px
         <button class="tool-btn" onclick="execCmd('underline')"><u>U</u></button>
         <button class="tool-btn" onclick="execCmd('strikeThrough')"><s>S</s></button>
         
-        <!-- Text Color Option Fixed -->
+        <!-- Text Color Option -->
         <div class="color-picker-wrap" title="Change Text Color">
           <span style="font-size:0.8rem; font-weight:600;">🎨</span>
           <input type="color" id="text-color-picker" onmousedown="saveSelection()" onchange="applyTextColor(this.value)" value="#c9a15c">
@@ -373,8 +386,9 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:2px
         <button class="tool-btn" onclick="execCmd('insertOrderedList')">1. List</button>
         <button class="tool-btn" onclick="insertChecklist()">☑ Checklist</button>
         
-        <!-- Countdown Tracker -->
-        <button class="tool-btn" title="Start Client Work Timer" onclick="insertClientTracker()">⏱️ Tracker</button>
+        <!-- Trackers -->
+        <button class="tool-btn" title="Start Live Stop Watch" onclick="insertClientTracker()">⏱️ Tracker</button>
+        <button class="tool-btn" title="Paste Date & Time to Count Up" onclick="insertCustomDateTracker()">⏳ Custom Tracker</button>
         
         <div class="tool-sep"></div>
         <button class="tool-btn" onclick="execCmd('hiliteColor','rgba(201,161,92,0.3)')">HL</button>
@@ -499,7 +513,7 @@ let modalCallback = null;
 let currentBoardId = null;
 let dragCardInfo = null;
 let trackerInterval = null;
-let savedRange = null; // Caches text selection for color picker
+let savedRange = null; 
 
 const STORAGE_KEY = 'lumina_studio_notes';
 const BOARDS_KEY = 'lumina_boards';
@@ -1002,10 +1016,9 @@ function openTemplatesModal() {
 }
 function closeTemplatesModal() { document.getElementById('templates-modal').style.display = 'none'; }
 
-/* ============ Rich Editing & New Features ============ */
+/* ============ Rich Editing & Fixed Features ============ */
 function execCmd(cmd, value = null) { els.editorBody.focus(); document.execCommand(cmd, false, value); scheduleSave(); }
 
-/* Save Text Selection Fix For Color Picker */
 function saveSelection() {
   const sel = window.getSelection();
   if (sel.rangeCount > 0) {
@@ -1028,12 +1041,59 @@ function applyTextColor(colorValue) {
   scheduleSave();
 }
 
-/* Countdown / Time Tracker Feature */
+/* Strictly Inline Insertion Function Fix */
+function insertBadgeAtCursor(badgeSpan) {
+  els.editorBody.focus();
+  const sel = window.getSelection();
+  if (sel.getRangeAt && sel.rangeCount) {
+    let range = sel.getRangeAt(0);
+    range.collapse(false);
+    
+    // Create a non-breaking space before and after for smooth inline typing
+    const spaceBefore = document.createTextNode('\u00A0\u00A0');
+    const spaceAfter = document.createTextNode('\u00A0');
+    
+    range.insertNode(spaceAfter);
+    range.insertNode(badgeSpan);
+    range.insertNode(spaceBefore);
+    
+    // Move cursor right after badge
+    range.setStartAfter(badgeSpan);
+    range.setEndAfter(badgeSpan);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  scheduleSave();
+}
+
+/* Standard Stopwatch Tracker */
 function insertClientTracker() {
   const now = Date.now();
-  const html = `<span class="client-tracker-badge" contenteditable="false" data-start="${now}">⏳ 0d 00h 00m 00s</span>&nbsp;`;
-  document.execCommand('insertHTML', false, html);
-  scheduleSave();
+  const badge = document.createElement('span');
+  badge.className = 'client-tracker-badge';
+  badge.contentEditable = 'false';
+  badge.setAttribute('data-start', now);
+  badge.textContent = '⏱️ 0d 00h 00m 00s';
+  insertBadgeAtCursor(badge);
+}
+
+/* Custom Date/Time Paste Tracker */
+function insertCustomDateTracker() {
+  const userInput = prompt("Paste your start date/time (e.g., Aug 14, 2026, 7:14 PM):", "Aug 14, 2026, 7:14 PM");
+  if (!userInput) return;
+  
+  const parsedTime = Date.parse(userInput);
+  if (isNaN(parsedTime)) {
+    alert("Invalid date format! Please enter date like: Aug 14, 2026, 7:14 PM");
+    return;
+  }
+  
+  const badge = document.createElement('span');
+  badge.className = 'client-tracker-badge';
+  badge.contentEditable = 'false';
+  badge.setAttribute('data-start', parsedTime);
+  badge.textContent = '⏱️ Calculating...';
+  insertBadgeAtCursor(badge);
 }
 
 function startGlobalTrackers() {
@@ -1057,15 +1117,17 @@ function startGlobalTrackers() {
   }, 1000);
 }
 
-/* Auto URL / Link Convertor Fix for New Tab */
-function autoConvertLinks() {
-  const urlRegex = /(?![^<]*>)(https?:\/\/[^\s<]+)/g;
-  if (urlRegex.test(els.editorBody.innerHTML)) {
-    els.editorBody.innerHTML = els.editorBody.innerHTML.replace(urlRegex, (url) => {
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer" contenteditable="false">${url}</a>`;
-    });
-    scheduleSave();
-  }
+/* Auto URL Convertor Without Losing Cursor Position */
+function autoConvertLinksOnPaste() {
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+  
+  const links = els.editorBody.querySelectorAll('a');
+  links.forEach(link => {
+    link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noopener noreferrer');
+    link.setAttribute('contenteditable', 'false');
+  });
 }
 
 function setupClipboardPaste() {
@@ -1088,7 +1150,7 @@ function setupClipboardPaste() {
       }
     }
     if(!imagePasted) {
-      setTimeout(autoConvertLinks, 50);
+      setTimeout(autoConvertLinksOnPaste, 50);
     }
   });
 }
@@ -1159,7 +1221,7 @@ function showWikiAutocomplete(range) {
   const items = notes.filter(n => !n.trashed && n.id !== activeNoteId && (n.title || 'Untitled').toLowerCase().includes(q)).slice(0, 8);
   wikiState.items = items;
   box.innerHTML = '';
-  if (items.length === 0) box.innerHTML = `<div class="wac-empty">লিখতে থাকো, নতুন নোট হিসেবে লিংক তৈরি হবে না — বিদ্যমান নোট টাইটেল ম্যাচ করলে দেখাবে।</div>`;
+  if (items.length === 0) box.innerHTML = `<div class="wac-empty">লিখতে থাকো, বিদ্যমান নোট মিললে দেখাবে...</div>`;
   items.forEach((n, i) => {
     const item = document.createElement('div');
     item.className = 'wac-item' + (i === 0 ? ' sel' : '');
@@ -1563,16 +1625,14 @@ async function driveSyncDown() {
   } catch (e) { if (status) status.textContent = '❌ Restore error: ' + e.message; }
 }
 
-/* ============ Setup ============ */
+/* ============ Event Listeners ============ */
 function setupEventListeners() {
   els.editorTitle.addEventListener('input', scheduleSave);
   els.editorBody.addEventListener('input', () => { 
     managePlaceholder(); 
-    autoConvertLinks();
     scheduleSave(); 
   });
   
-  // Text selection tracking for Color Picker
   els.editorBody.addEventListener('mouseup', saveSelection);
   els.editorBody.addEventListener('keyup', saveSelection);
 
