@@ -258,6 +258,7 @@ body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;borde
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);gap:8px;}
 mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px;}
 .menu-toggle{display:none;} .back-btn{display:none;}
+.view-hidden{display:none!important;}
 
 /* Secure Clean Login Screen Modal */
 #auth-modal{display:flex;position:fixed;inset:0;background:var(--bg);z-index:9999;align-items:center;justify-content:center;}
@@ -1509,8 +1510,8 @@ function saveBoards() { localStorage.setItem(BOARDS_KEY, JSON.stringify(boards))
 function openBoardView() {
   document.querySelectorAll('.sidebar .nav-item[data-filter]').forEach(el => el.classList.remove('active'));
   document.getElementById('nav-boards').classList.add('active');
-  els.editorView.style.display = 'none';
-  document.querySelector('.list-view').style.display = 'none';
+  els.editorView.classList.add('view-hidden');
+  document.querySelector('.list-view').classList.add('view-hidden');
   closeGraphView(true);
   els.boardView.classList.add('active');
   renderBoardSelect();
@@ -1518,8 +1519,8 @@ function openBoardView() {
 }
 function closeBoardView(silent) {
   els.boardView.classList.remove('active');
-  els.editorView.style.display = 'flex';
-  document.querySelector('.list-view').style.display = 'flex';
+  els.editorView.classList.remove('view-hidden');
+  document.querySelector('.list-view').classList.remove('view-hidden');
   if (!silent) document.getElementById('nav-boards').classList.remove('active');
 }
 
@@ -1626,16 +1627,16 @@ function moveCard(targetColId) {
 function openGraphView() {
   document.querySelectorAll('.sidebar .nav-item[data-filter]').forEach(el => el.classList.remove('active'));
   document.getElementById('nav-graph').classList.add('active');
-  els.editorView.style.display = 'none';
-  document.querySelector('.list-view').style.display = 'none';
+  els.editorView.classList.add('view-hidden');
+  document.querySelector('.list-view').classList.add('view-hidden');
   closeBoardView(true);
   els.graphView.classList.add('active');
   renderGraph();
 }
 function closeGraphView(silent) {
   els.graphView.classList.remove('active');
-  els.editorView.style.display = 'flex';
-  document.querySelector('.list-view').style.display = 'flex';
+  els.editorView.classList.remove('view-hidden');
+  document.querySelector('.list-view').classList.remove('view-hidden');
   if (!silent) document.getElementById('nav-graph').classList.remove('active');
 }
 
