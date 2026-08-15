@@ -213,7 +213,7 @@ body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;borde
 .wac-empty{padding:8px 10px;font-size:.8rem;color:var(--text-faint);}
 
 /* Modals */
-.modal{display:none;position:fixed;inset:0;background:rgba(30,26,53,0.55);backdrop-filter:blur(6px);z-index:100;align-items:center;justify-content:center;padding:20px;}
+.modal{display:none;position:fixed;inset:0;background:rgba(30,26,53,0.75);backdrop-filter:blur(8px);z-index:100;align-items:center;justify-content:center;padding:20px;}
 .modal-content{background:var(--bg-elevated);border:1px solid var(--glass-border);padding:24px;border-radius:20px;width:420px;max-width:100%;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;gap:12px;}
 .modal-content h3{font-family:var(--serif);font-size:1.15rem;font-weight:800;}
 .modal-content input{padding:10px 12px;border-radius:10px;border:1px solid var(--glass-border);background:var(--accent-soft);color:var(--text-main);outline:none;font-size:.88rem;}
@@ -259,6 +259,14 @@ body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;borde
 mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px;}
 .menu-toggle{display:none;} .back-btn{display:none;}
 
+/* Secure Clean Login Screen Modal */
+#auth-modal{display:flex;position:fixed;inset:0;background:var(--bg);z-index:9999;align-items:center;justify-content:center;}
+.auth-box{background:var(--bg-elevated);padding:32px;border-radius:24px;border:1px solid var(--glass-border);box-shadow:var(--shadow-lg);width:360px;max-width:90%;text-align:center;}
+.auth-box h2{font-family:var(--serif);font-size:1.4rem;margin-bottom:8px;}
+.auth-box p{font-size:.8rem;color:var(--text-muted);margin-bottom:20px;}
+.auth-box input{width:100%;padding:12px;margin-bottom:12px;border-radius:12px;border:1px solid var(--glass-border);background:var(--accent-soft);color:var(--text-main);outline:none;font-size:.9rem;}
+.auth-box button{width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#a58bf3);color:#fff;font-weight:700;border-radius:12px;font-size:.9rem;margin-top:6px;}
+
 @media (max-width:900px){
   body{padding:0;gap:0;}
   #app{gap:0;}
@@ -280,6 +288,20 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 </style>
 </head>
 <body>
+
+<!-- Secure Login Lock Screen Modal (No Default Passwords Revealed) -->
+<div id="auth-modal">
+  <div class="auth-box">
+    <div class="brand" style="justify-content:center;margin-bottom:12px;"><span class="dot"></span>Lumina <span style="color:var(--accent);font-weight:400;">Pro</span></div>
+    <h2>Sign In to Access Notes</h2>
+    <p>আপনার অ্যাকাউন্ট ইমেইল ও পাসওয়ার্ড প্রদান করুন</p>
+    <input type="email" id="auth-email" placeholder="Email...">
+    <input type="password" id="auth-pass" placeholder="Password...">
+    <button id="auth-btn">Sign In / Register</button>
+    <div id="auth-status" style="margin-top:12px;font-size:.78rem;color:var(--danger);"></div>
+  </div>
+</div>
+
 <div id="app">
   <aside class="sidebar glass" id="sidebar">
     <div class="brand"><span class="dot"></span>Lumina <span style="color:var(--accent);font-weight:400;">Pro</span></div>
@@ -354,6 +376,10 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
     <div class="nav-item" onclick="toggleTheme()">
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4C12.92 3.04 12.46 3 12 3z"/></svg>
       Theme Switch
+    </div>
+    <div class="nav-item" onclick="window.firebaseSignOut()" style="color:var(--danger);">
+      <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+      Sign Out
     </div>
   </aside>
 
@@ -549,10 +575,11 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 <!-- Wiki-link autocomplete -->
 <div id="wiki-autocomplete"></div>
 
-<!-- Firebase SDK Integration -->
+<!-- Firebase SDK Integration & Auth Manager -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBVeTo-ojk289hk0-99RDpPEOHcEp3S84k",
@@ -566,18 +593,66 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 
   const app = initializeApp(firebaseConfig);
   const database = getDatabase(app);
-  const notesDbRef = ref(database, 'notes_data');
+  const auth = getAuth(app);
+
+  let currentUser = null;
+  let notesDbRef = null;
+
+  // Set Local Persistence (Remembers login session across browser restarts)
+  setPersistence(auth, browserLocalPersistence);
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      currentUser = user;
+      notesDbRef = ref(database, 'users/' + user.uid + '/notes');
+      document.getElementById('auth-modal').style.display = 'none';
+      startListeningNotes();
+    } else {
+      currentUser = null;
+      document.getElementById('auth-modal').style.display = 'flex';
+    }
+  });
+
+  document.getElementById('auth-btn').addEventListener('click', () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const pass = document.getElementById('auth-pass').value.trim();
+    const status = document.getElementById('auth-status');
+
+    if(!email || !pass) { status.textContent = "ইমেইল ও পাসওয়ার্ড প্রদান করুন"; return; }
+    if(pass.length < 6) { status.textContent = "পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে"; return; }
+
+    status.textContent = "প্রসেস করা হচ্ছে...";
+
+    signInWithEmailAndPassword(auth, email, pass)
+      .catch((err) => {
+        // Auto register if account does not exist
+        return createUserWithEmailAndPassword(auth, email, pass);
+      })
+      .catch((err) => {
+        status.textContent = "এরর: " + err.message;
+      });
+  });
+
+  window.firebaseSignOut = function() {
+    signOut(auth);
+  };
 
   window.syncNotesToFirebase = function(notesArray) {
-    set(notesDbRef, notesArray).catch(err => console.error("Firebase Sync Error:", err));
+    if (notesDbRef) {
+      set(notesDbRef, notesArray).catch(err => console.error("Firebase Sync Error:", err));
+    }
   };
 
-  window.listenFirebaseNotes = function(callback) {
-    onValue(notesDbRef, (snapshot) => {
-      const data = snapshot.val();
-      callback(data || []);
-    });
-  };
+  function startListeningNotes() {
+    if (notesDbRef) {
+      onValue(notesDbRef, (snapshot) => {
+        const data = snapshot.val();
+        if (window.handleRemoteNotesUpdate) {
+          window.handleRemoteNotesUpdate(data || []);
+        }
+      });
+    }
+  }
 </script>
 
 <script>
@@ -655,25 +730,22 @@ function init() {
   updateCounts();
   startGlobalTrackers();
 
-  // Firebase Realtime Listener Setup
-  if (window.listenFirebaseNotes) {
-    window.listenFirebaseNotes((remoteNotes) => {
-      if (remoteNotes && Array.isArray(remoteNotes)) {
-        notes = remoteNotes;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-        renderNotes();
-        renderTagsSidebar();
-        updateCounts();
-        if (activeNoteId) {
-          const currentNote = notes.find(n => n.id === activeNoteId);
-          if (currentNote && document.activeElement !== els.editorBody && document.activeElement !== els.editorTitle) {
-            els.editorTitle.value = currentNote.title || '';
-            els.editorBody.innerHTML = currentNote.content || '';
-          }
+  window.handleRemoteNotesUpdate = (remoteNotes) => {
+    if (remoteNotes && Array.isArray(remoteNotes)) {
+      notes = remoteNotes;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+      renderNotes();
+      renderTagsSidebar();
+      updateCounts();
+      if (activeNoteId) {
+        const currentNote = notes.find(n => n.id === activeNoteId);
+        if (currentNote && document.activeElement !== els.editorBody && document.activeElement !== els.editorTitle) {
+          els.editorTitle.value = currentNote.title || '';
+          els.editorBody.innerHTML = currentNote.content || '';
         }
       }
-    });
-  }
+    }
+  };
 
   const lastActive = localStorage.getItem('lumina_last_active');
   if (lastActive && notes.find(n => n.id === lastActive && !n.trashed)) openNote(lastActive);
@@ -1224,7 +1296,6 @@ function autoConvertLinksOnPaste() {
   let html = els.editorBody.innerHTML;
   let changed = false;
 
-  // Local File Path Regex (e.g. D:\Server\PR\... or E:\Ismail...)
   const filePathRegex = /(?![^<]*>)([a-zA-Z]:\\[^<>\n\r\t]+)/g;
   if (filePathRegex.test(html)) {
     html = html.replace(filePathRegex, (path) => {
@@ -1235,7 +1306,6 @@ function autoConvertLinksOnPaste() {
     changed = true;
   }
 
-  // Web Links Regex (http:// or https://)
   const urlRegex = /(?![^<]*>)(https?:\/\/[^\s<]+)/g;
   if (urlRegex.test(html)) {
     html = html.replace(urlRegex, (url) => {
@@ -1249,7 +1319,6 @@ function autoConvertLinksOnPaste() {
     scheduleSave();
   }
 
-  // Ensure all standard web <a> tags open in new tab
   els.editorBody.querySelectorAll('a').forEach(link => {
     if(!link.href.startsWith('openfolder:')) {
       link.setAttribute('target', '_blank');
@@ -1259,7 +1328,6 @@ function autoConvertLinksOnPaste() {
   });
 }
 
-/* Toast notification */
 function showFolderToast(msg) {
   let t = document.getElementById('folder-toast');
   if (!t) {
@@ -1337,11 +1405,9 @@ let wikiState = { node: null, startOffset: 0, query: '', items: [], selIndex: 0 
 function setupWikiLinkHandlers() {
   els.editorBody.addEventListener('keyup', handleWikiTrigger);
   els.editorBody.addEventListener('click', (e) => {
-    // Wiki Link Click
     const chip = e.target.closest('.wiki-link');
     if (chip) { e.preventDefault(); if (chip.dataset.noteId) openNote(chip.dataset.noteId); return; }
 
-    // Local Folder Link Click — Launching File Explorer
     const folderLink = e.target.closest('.local-folder-link');
     if (folderLink) {
       e.preventDefault();
@@ -1349,7 +1415,6 @@ function setupWikiLinkHandlers() {
       return;
     }
 
-    // External Link Click
     const link = e.target.closest('a');
     if (link && link.href && !link.href.startsWith('openfolder:')) {
       e.preventDefault();
