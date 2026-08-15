@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Lumina Pro — Notes, Linked</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#161325">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lumina Pro">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -260,6 +267,13 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 .menu-toggle{display:none;} .back-btn{display:none;}
 .view-hidden{display:none!important;}
 
+#offline-badge{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--warning);color:#161325;font-weight:700;font-size:.78rem;padding:8px 16px;
+  border-radius:20px;box-shadow:var(--shadow-lg);z-index:99999;display:flex;align-items:center;gap:6px;
+  transition:transform .25s ease;pointer-events:none;}
+#offline-badge.show{transform:translateX(-50%) translateY(0);}
+#offline-badge svg{width:14px;height:14px;fill:#161325;}
+
 /* Secure Clean Login Screen Modal */
 #auth-modal{display:flex;position:fixed;inset:0;background:var(--bg);z-index:9999;align-items:center;justify-content:center;}
 .auth-box{background:var(--bg-elevated);padding:32px;border-radius:24px;border:1px solid var(--glass-border);box-shadow:var(--shadow-lg);width:360px;max-width:90%;text-align:center;}
@@ -289,6 +303,11 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 </style>
 </head>
 <body>
+
+<div id="offline-badge">
+  <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 0 0-6 0zm-4-4l2 2a7.074 7.074 0 0 1 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+  অফলাইন — পরিবর্তন লোকালি সেভ হচ্ছে, নেট এলে সিঙ্ক হবে
+</div>
 
 <!-- Secure Login Lock Screen Modal (No Default Passwords Revealed) -->
 <div id="auth-modal">
@@ -1878,6 +1897,34 @@ function setupEventListeners() {
 window.addEventListener('DOMContentLoaded', () => {
   init();
 });
+
+/* ============ PWA: Service Worker + Offline/Online status ============ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .catch((err) => console.error('Service worker registration failed:', err));
+  });
+}
+
+function updateOfflineBadge() {
+  const badge = document.getElementById('offline-badge');
+  if (!badge) return;
+  if (navigator.onLine) {
+    badge.classList.remove('show');
+  } else {
+    badge.classList.add('show');
+  }
+}
+window.addEventListener('online', () => {
+  updateOfflineBadge();
+  // Safety net: Firebase already auto-queues and flushes writes on reconnect,
+  // but push the current local state again in case anything was missed.
+  if (window.syncNotesToFirebase && typeof notes !== 'undefined') {
+    window.syncNotesToFirebase(notes);
+  }
+});
+window.addEventListener('offline', updateOfflineBadge);
+window.addEventListener('DOMContentLoaded', updateOfflineBadge);
 </script>
 </body>
 </html>
