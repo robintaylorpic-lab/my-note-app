@@ -775,6 +775,7 @@ function init() {
         if (currentNote && document.activeElement !== els.editorBody && document.activeElement !== els.editorTitle) {
           els.editorTitle.value = currentNote.title || '';
           els.editorBody.innerHTML = currentNote.content || '';
+          upgradeNoteContentOnOpen();
         }
       }
     }
@@ -851,6 +852,7 @@ function proceedOpenNote(id) {
   els.editorActive.style.display = 'flex';
   els.editorTitle.value = note.title;
   els.editorBody.innerHTML = note.content;
+  upgradeNoteContentOnOpen();
   updateEditorMeta(note);
   updateStats();
   highlightActiveCard();
@@ -1402,6 +1404,33 @@ function deleteFolderBadge(btn) {
     scheduleSave();
     showFolderToast('Link মুছে ফেলা হয়েছে ✓');
   }
+}
+
+// পুরনো নোটে বানানো ফোল্ডার/ফাইল badge-এ যদি ডিলিট বাটন না থাকে (নতুন ফিচার আসার আগে যেগুলো তৈরি হয়েছিল),
+// সেগুলোতে স্বয়ংক্রিয়ভাবে ডিলিট বাটন যোগ করে দেয়। নোট খোলার সময় কল করা হয়।
+function upgradeOldFolderBadges() {
+  let changed = false;
+  els.editorBody.querySelectorAll('.local-folder-wrap').forEach((wrap) => {
+    if (!wrap.querySelector('.delete-folder-btn')) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-folder-btn';
+      delBtn.title = 'Remove this link';
+      delBtn.textContent = '🗑️';
+      delBtn.setAttribute('onclick', 'deleteFolderBadge(this)');
+      wrap.appendChild(delBtn);
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+// নোট খোলার সময় পুরনো কনটেন্টকে সবসময় সবচেয়ে নতুন ফরম্যাটে "upgrade" করে দেয়:
+// ১) প্লেইন টেক্সট আকারে থাকা লিংক/path গুলোকে ক্লিকেবল বানায়
+// ২) পুরনো badge-এ মিসিং ডিলিট বাটন যোগ করে
+function upgradeNoteContentOnOpen() {
+  autoConvertLinksOnPaste();     // প্লেইন টেক্সট URL/path -> ক্লিকেবল badge (নিজে থেকেই সেভ করে, যদি বদলায়)
+  const badgesChanged = upgradeOldFolderBadges();
+  if (badgesChanged) scheduleSave();
 }
 
 function openLocalFolder(path, customUrl) {
