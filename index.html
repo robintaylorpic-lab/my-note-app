@@ -324,7 +324,7 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 
 <div id="app">
   <aside class="sidebar glass" id="sidebar">
-    <div class="brand"><span class="dot"></span>Pixel <span style="color:var(--accent);font-weight:400;">Retouching</span></div>
+    <div class="brand"><span class="dot"></span>Lumina <span style="color:var(--accent);font-weight:400;">Pro</span></div>
 
     <div class="nav-item active" data-filter="all" onclick="setFilter('all')">
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 7h10v2H7zm0 4h10v2H7zm0 4h7v2H7z"/></svg>
@@ -1316,12 +1316,22 @@ function autoConvertLinksOnPaste() {
   let html = els.editorBody.innerHTML;
   let changed = false;
 
-  const filePathRegex = /(?![^<]*>)([a-zA-Z]:\\[^<>\n\r\t]+)/g;
+  const filePathRegex = /(?![^<]*>)([a-zA-Z]:\\[^<>\n\r\t]+|\\\\[a-zA-Z0-9._-]+\\[^<>\n\r\t]+)/g;
   if (filePathRegex.test(html)) {
     html = html.replace(filePathRegex, (path) => {
       const cleanPath = path.trim();
       const customProtocolUrl = 'openfolder:' + encodeURIComponent(cleanPath);
       return `<span class="local-folder-wrap" contenteditable="false"><a href="${customProtocolUrl}" class="local-folder-link" data-path="${cleanPath}" title="Click to open in Windows File Explorer">📁 Open Folder</a><button class="copy-folder-btn" onclick="copyFolderPath('${cleanPath.replace(/\\/g, '\\\\')}')" title="Copy Path for Explorer">📋 Copy Path</button></span>`;
+    });
+    changed = true;
+  }
+
+  const fileUriRegex = /(?![^<]*>)(file:\/\/\/[^\s<]+)/gi;
+  if (fileUriRegex.test(html)) {
+    html = html.replace(fileUriRegex, (uri) => {
+      let winPath = decodeURIComponent(uri.replace(/^file:\/\/\//i, '')).replace(/\//g, '\\');
+      const customProtocolUrl = 'openhtml:' + encodeURIComponent(winPath);
+      return `<span class="local-folder-wrap" contenteditable="false"><a href="${customProtocolUrl}" class="local-folder-link" data-path="${winPath}" title="Click to open this file in your browser">🌐 Open File</a><button class="copy-folder-btn" onclick="copyFolderPath('${winPath.replace(/\\/g, '\\\\')}')" title="Copy Path">📋 Copy Path</button></span>`;
     });
     changed = true;
   }
@@ -1340,7 +1350,7 @@ function autoConvertLinksOnPaste() {
   }
 
   els.editorBody.querySelectorAll('a').forEach(link => {
-    if(!link.href.startsWith('openfolder:')) {
+    if(!link.href.startsWith('openfolder:') && !link.href.startsWith('openhtml:')) {
       link.setAttribute('target', '_blank');
       link.setAttribute('rel', 'noopener noreferrer');
     }
