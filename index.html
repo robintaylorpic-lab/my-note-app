@@ -97,6 +97,13 @@ body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;borde
 .tag-pill{font-size:.66rem;background:var(--accent2-soft);color:var(--accent2);padding:2px 9px;border-radius:20px;font-weight:700;}
 .nc-meta{font-size:.68rem;color:var(--text-faint);font-weight:600;}
 
+.pin-reorder{display:flex;gap:4px;margin-top:6px;}
+.pin-move-btn{font-size:.68rem;background:var(--glass-bg);border:1px solid var(--glass-border);
+  padding:2px 8px;border-radius:6px;cursor:pointer;color:var(--accent);line-height:1.4;}
+.pin-move-btn:hover{background:var(--accent);color:#fff;}
+.pin-move-btn:disabled{opacity:.3;cursor:default;}
+.pin-move-btn:disabled:hover{background:var(--glass-bg);color:var(--accent);}
+
 /* Editor View */
 .editor-view{flex-grow:1;display:flex;flex-direction:column;background:var(--bg-elevated);position:relative;
   border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--glass-border);overflow:hidden;}
@@ -886,7 +893,28 @@ function syncActiveNoteToState() {
 function toggleNoteProperty(prop) {
   if (!activeNoteId) return;
   const note = notes.find(n => n.id === activeNoteId);
-  if (note) { note[prop] = !note[prop]; note.updated = Date.now(); saveNotes(); renderNotes(); updateEditorMeta(note); }
+  if (note) {
+    note[prop] = !note[prop];
+    if (prop === 'pinned' && note.pinned) {
+      const maxOrder = Math.max(0, ...notes.filter(n => n.pinned && n.id !== note.id).map(n => n.pinOrder || 0));
+      note.pinOrder = maxOrder + 1;
+    }
+    note.updated = Date.now(); saveNotes(); renderNotes(); updateEditorMeta(note);
+  }
+}
+
+function movePinnedNote(noteId, direction) {
+  const pinnedNotes = notes.filter(n => n.pinned && !n.archived && !n.trashed)
+    .sort((a, b) => (a.pinOrder || 0) - (b.pinOrder || 0));
+  const idx = pinnedNotes.findIndex(n => n.id === noteId);
+  if (idx === -1) return;
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= pinnedNotes.length) return;
+  const tmp = pinnedNotes[idx].pinOrder || 0;
+  pinnedNotes[idx].pinOrder = pinnedNotes[swapIdx].pinOrder || 0;
+  pinnedNotes[swapIdx].pinOrder = tmp;
+  saveNotes();
+  renderNotes();
 }
 
 function duplicateNote() {
@@ -1001,8 +1029,18 @@ function renderNotes() {
     scored.sort((a, b) => b.s - a.s);
     filtered = scored.map(x => x.n);
   } else {
+    // পুরনো pin করা নোটে যদি pinOrder সেট না থাকে (এই ফিচার আসার আগে থেকে pinned),
+    // একবারই "শেষ এডিট" অনুযায়ী প্রাথমিক অর্ডার বসিয়ে দাও — তারপর থেকে ↑↓ বাটন দিয়ে সাজানো যাবে
+    const needsMigration = notes.some(n => n.pinned && (n.pinOrder === undefined || n.pinOrder === null));
+    if (needsMigration) {
+      const allPinned = notes.filter(n => n.pinned).sort((a, b) => (b.updated || 0) - (a.updated || 0));
+      allPinned.forEach((n, idx) => { if (n.pinOrder === undefined || n.pinOrder === null) n.pinOrder = idx; });
+      saveNotes();
+    }
+
     const sort = els.sortSelect.value;
     filtered.sort((a, b) => {
+      if (a.pinned && b.pinned && currentFilter !== 'trash') return (a.pinOrder || 0) - (b.pinOrder || 0);
       if (a.pinned && !b.pinned && currentFilter !== 'trash') return -1;
       if (!a.pinned && b.pinned && currentFilter !== 'trash') return 1;
       if (sort === 'updatedDesc') return (b.updated || 0) - (a.updated || 0);
@@ -1017,7 +1055,9 @@ function renderNotes() {
     return;
   }
 
-  filtered.forEach(note => {
+  const totalPinnedCount = notes.filter(n => n.pinned && !n.archived && !n.trashed).length;
+
+  filtered.forEach((note, indexInFiltered) => {
     const card = document.createElement('div');
     card.className = `note-card ${note.id === activeNoteId ? 'active' : ''}`;
     card.onclick = note.trashed ? () => restoreNote(note.id) : () => openNote(note.id);
@@ -1032,11 +1072,25 @@ function renderNotes() {
       const re = new RegExp('(' + searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
       preview = preview.replace(re, '<mark>$1</mark>');
     }
+
+    let reorderHtml = '';
+    if (note.pinned && !note.trashed && totalPinnedCount > 1 && !searchQuery) {
+      const pinnedSorted = notes.filter(n => n.pinned && !n.archived && !n.trashed).sort((a, b) => (a.pinOrder || 0) - (b.pinOrder || 0));
+      const posInPinned = pinnedSorted.findIndex(n => n.id === note.id);
+      const isFirst = posInPinned === 0;
+      const isLast = posInPinned === pinnedSorted.length - 1;
+      reorderHtml = `<div class="pin-reorder">
+        <button class="pin-move-btn" ${isFirst ? 'disabled' : ''} onclick="event.stopPropagation(); movePinnedNote('${note.id}','up')" title="উপরে সরান">▲ উপরে</button>
+        <button class="pin-move-btn" ${isLast ? 'disabled' : ''} onclick="event.stopPropagation(); movePinnedNote('${note.id}','down')" title="নিচে সরান">▼ নিচে</button>
+      </div>`;
+    }
+
     card.innerHTML = `
       <div class="nc-header"><div class="nc-title">${title}</div><div class="nc-icons">${iconsHtml}</div></div>
       <div class="nc-preview">${preview}</div>
       <div class="nc-tags">${tagsHtml}</div>
-      <div class="nc-meta">${formatDate(note.updated || Date.now())} ${note.trashed ? '• Click to Restore' : ''}</div>`;
+      <div class="nc-meta">${formatDate(note.updated || Date.now())} ${note.trashed ? '• Click to Restore' : ''}</div>
+      ${reorderHtml}`;
     els.notesList.appendChild(card);
   });
 }
