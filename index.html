@@ -191,6 +191,19 @@ body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;borde
   background: var(--accent);
   color: #fff;
 }
+.delete-folder-btn {
+  font-size: 0.72rem;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.35);
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #ef4444;
+}
+.delete-folder-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
 
 /* Color picker wrapper */
 .color-picker-wrap {
@@ -1321,7 +1334,7 @@ function autoConvertLinksOnPaste() {
     html = html.replace(filePathRegex, (path) => {
       const cleanPath = path.trim();
       const customProtocolUrl = 'openfolder:' + encodeURIComponent(cleanPath);
-      return `<span class="local-folder-wrap" contenteditable="false"><a href="${customProtocolUrl}" class="local-folder-link" data-path="${cleanPath}" title="Click to open in Windows File Explorer">📁 Open Folder</a><button class="copy-folder-btn" onclick="copyFolderPath('${cleanPath.replace(/\\/g, '\\\\')}')" title="Copy Path for Explorer">📋 Copy Path</button></span>`;
+      return `<span class="local-folder-wrap" contenteditable="false"><a href="${customProtocolUrl}" class="local-folder-link" data-path="${cleanPath}" title="Click to open in Windows File Explorer">📁 Open Folder</a><button class="copy-folder-btn" onclick="copyFolderPath('${cleanPath.replace(/\\/g, '\\\\')}')" title="Copy Path for Explorer">📋 Copy Path</button><button class="delete-folder-btn" onclick="deleteFolderBadge(this)" title="Remove this link">🗑️</button></span>`;
     });
     changed = true;
   }
@@ -1331,7 +1344,7 @@ function autoConvertLinksOnPaste() {
     html = html.replace(fileUriRegex, (uri) => {
       let winPath = decodeURIComponent(uri.replace(/^file:\/\/\//i, '')).replace(/\//g, '\\');
       const customProtocolUrl = 'openhtml:' + encodeURIComponent(winPath);
-      return `<span class="local-folder-wrap" contenteditable="false"><a href="${customProtocolUrl}" class="local-folder-link" data-path="${winPath}" title="Click to open this file in your browser">🌐 Open File</a><button class="copy-folder-btn" onclick="copyFolderPath('${winPath.replace(/\\/g, '\\\\')}')" title="Copy Path">📋 Copy Path</button></span>`;
+      return `<span class="local-folder-wrap" contenteditable="false"><a href="${customProtocolUrl}" class="local-folder-link" data-path="${winPath}" title="Click to open this file in your browser">🌐 Open File</a><button class="copy-folder-btn" onclick="copyFolderPath('${winPath.replace(/\\/g, '\\\\')}')" title="Copy Path">📋 Copy Path</button><button class="delete-folder-btn" onclick="deleteFolderBadge(this)" title="Remove this link">🗑️</button></span>`;
     });
     changed = true;
   }
@@ -1380,6 +1393,15 @@ function copyFolderPath(path) {
   navigator.clipboard.writeText(path).then(() => {
     showFolderToast('Path কপি হয়েছে ✓');
   });
+}
+
+function deleteFolderBadge(btn) {
+  const wrap = btn.closest('.local-folder-wrap');
+  if (wrap) {
+    wrap.remove();
+    scheduleSave();
+    showFolderToast('Link মুছে ফেলা হয়েছে ✓');
+  }
 }
 
 function openLocalFolder(path, customUrl) {
