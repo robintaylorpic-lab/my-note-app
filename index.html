@@ -332,7 +332,7 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 <!-- Secure Login Lock Screen Modal (No Default Passwords Revealed) -->
 <div id="auth-modal">
   <div class="auth-box">
-    <div class="brand" style="justify-content:center;margin-bottom:12px;"><span class="dot"></span>Pixel <span style="color:var(--accent);font-weight:400;">Retouching</span></div>
+    <div class="brand" style="justify-content:center;margin-bottom:12px;"><span class="dot"></span>Lumina <span style="color:var(--accent);font-weight:400;">Pro</span></div>
     <h2>Sign In to Access Notes</h2>
     <p>আপনার অ্যাকাউন্ট ইমেইল ও পাসওয়ার্ড প্রদান করুন</p>
     <input type="email" id="auth-email" placeholder="Email...">
@@ -344,7 +344,7 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 
 <div id="app">
   <aside class="sidebar glass" id="sidebar">
-    <div class="brand"><span class="dot"></span>Pixel <span style="color:var(--accent);font-weight:400;">Retouching</span></div>
+    <div class="brand"><span class="dot"></span>Lumina <span style="color:var(--accent);font-weight:400;">Pro</span></div>
 
     <div class="nav-item active" data-filter="all" onclick="setFilter('all')">
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 7h10v2H7zm0 4h10v2H7zm0 4h7v2H7z"/></svg>
@@ -665,11 +665,15 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 
     signInWithEmailAndPassword(auth, email, pass)
       .catch((err) => {
-        // Auto register if account does not exist
-        return createUserWithEmailAndPassword(auth, email, pass);
+        // শুধুমাত্র "user-not-found" হলেই নতুন অ্যাকাউন্ট বানানোর চেষ্টা করবে —
+        // অন্য যেকোনো error (ভুল পাসওয়ার্ড, disabled account, ইত্যাদি) সরাসরি দেখাবে, লুকাবে না
+        if (err.code === 'auth/user-not-found') {
+          return createUserWithEmailAndPassword(auth, email, pass);
+        }
+        throw err;
       })
       .catch((err) => {
-        status.textContent = "এরর: " + err.message;
+        status.textContent = "এরর: " + err.message + " (code: " + err.code + ")";
       });
   });
 
