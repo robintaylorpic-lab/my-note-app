@@ -608,7 +608,20 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
       <button onclick="driveSyncUp()">⬆ Sync to Drive</button>
       <button onclick="driveSyncDown()">⬇ Restore from Drive</button>
     </div>
-    <div style="display:flex;justify-content:flex-end;"><button onclick="closeSettingsModal()">Close</button></div>
+
+    <hr style="border-color:var(--glass-border);margin:16px 0;">
+    <h3 style="font-size:1rem;">Local Folder Auto-Backup <span style="font-weight:400;font-size:.72rem;color:var(--text-faint);">(Dropbox/OneDrive সিঙ্কড ফোল্ডার)</span></h3>
+    <p style="font-size:.8rem;color:var(--text-muted);line-height:1.5;">
+      একবার আপনার Dropbox-সিঙ্কড লোকাল ফোল্ডার সিলেক্ট করে দিন — অ্যাপ প্রতিবার নোট সেভ হওয়ার কিছুক্ষণ পর সেই ফোল্ডারে একটা backup JSON ফাইল লিখে রাখবে, যেটা Dropbox নিজে থেকেই cloud-এ সিঙ্ক করে দেবে। শুধু Chrome/Edge ব্রাউজারে কাজ করে।
+    </p>
+    <div id="local-backup-status" style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px;">এখনো কোনো ফোল্ডার সিলেক্ট করা হয়নি।</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-new" onclick="chooseLocalBackupFolder()">📁 ফোল্ডার সিলেক্ট করুন</button>
+      <button onclick="runLocalBackupNow()">💾 এখনই ব্যাকআপ নিন</button>
+      <button onclick="disconnectLocalBackupFolder()">✖ বিচ্ছিন্ন করুন</button>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;"><button onclick="closeSettingsModal()">Close</button></div>
   </div>
 </div>
 
@@ -618,7 +631,7 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 <!-- Firebase SDK Integration & Auth Manager -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -637,6 +650,10 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 
   let currentUser = null;
   let notesDbRef = null;
+  // প্রতিটা নোটের সর্বশেষ sync-করা অবস্থার একটা "snapshot" (id -> JSON string) —
+  // এর সাথে তুলনা করে বোঝা হয় ঠিক কোন নোট(গুলো) বদলেছে, শুধু সেটুকুই পাঠানো হয়
+  let lastSyncedSnapshot = {};
+  let migrationChecked = false;
 
   // Set Local Persistence (Remembers login session across browser restarts)
   setPersistence(auth, browserLocalPersistence);
@@ -658,8 +675,8 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
     const pass = document.getElementById('auth-pass').value.trim();
     const status = document.getElementById('auth-status');
 
-    if(!email || !pass) { status.textContent = "ইমেইল ও পাসওয়ার্ড প্রদান করুন"; return; }
-    if(pass.length < 6) { status.textContent = "পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে"; return; }
+    if(!email || !pass) { status.textContent = "ইমেইল ও পাসওয়ার্ড প্রদান করুন"; return; }
+    if(pass.length < 6) { status.textContent = "পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে"; return; }
 
     status.textContent = "প্রসেস করা হচ্ছে...";
 
@@ -681,18 +698,57 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
     signOut(auth);
   };
 
+  // এখন প্রতিটা নোট আলাদাভাবে (তার id দিয়ে) sync হয় — শুধু যেগুলো আসলেই বদলেছে/নতুন/মুছে
+  // গেছে সেগুলোই Firebase-এ পাঠানো হয়, পুরো লিস্ট বারবার re-upload/re-download হয় না।
   window.syncNotesToFirebase = function(notesArray) {
-    if (notesDbRef) {
-      set(notesDbRef, notesArray).catch(err => console.error("Firebase Sync Error:", err));
-    }
+    if (!notesDbRef) return;
+
+    const currentIds = new Set();
+    notesArray.forEach((note) => {
+      if (!note || !note.id) return;
+      currentIds.add(note.id);
+      const serialized = JSON.stringify(note);
+      if (lastSyncedSnapshot[note.id] !== serialized) {
+        set(ref(database, 'users/' + currentUser.uid + '/notes/' + note.id), note)
+          .catch(err => console.error("Firebase Sync Error (note " + note.id + "):", err));
+        lastSyncedSnapshot[note.id] = serialized;
+      }
+    });
+
+    // যেসব নোট আগে sync করা ছিল কিন্তু এখন আর তালিকায় নেই (মুছে ফেলা হয়েছে) — শুধু সেগুলোই remove হবে
+    Object.keys(lastSyncedSnapshot).forEach((id) => {
+      if (!currentIds.has(id)) {
+        remove(ref(database, 'users/' + currentUser.uid + '/notes/' + id))
+          .catch(err => console.error("Firebase Remove Error (note " + id + "):", err));
+        delete lastSyncedSnapshot[id];
+      }
+    });
   };
 
   function startListeningNotes() {
     if (notesDbRef) {
       onValue(notesDbRef, (snapshot) => {
         const data = snapshot.val();
+
+        // পুরনো ভার্সনের ডেটা (array আকারে সেভ করা) হলে — একবারই object-key ফরম্যাটে
+        // রূপান্তর করে নেওয়া হয়, এরপর থেকে সবসময় efficient per-note sync ব্যবহার হবে
+        if (!migrationChecked) {
+          migrationChecked = true;
+          if (Array.isArray(data) && data.length > 0) {
+            const keyedObject = {};
+            data.forEach((note) => { if (note && note.id) keyedObject[note.id] = note; });
+            set(notesDbRef, keyedObject).catch(err => console.error("Migration error:", err));
+            data.forEach((note) => { if (note && note.id) lastSyncedSnapshot[note.id] = JSON.stringify(note); });
+            if (window.handleRemoteNotesUpdate) window.handleRemoteNotesUpdate(data);
+            return;
+          }
+        }
+
+        // বর্তমান ফরম্যাট: object, key = note id, value = note object
+        const notesArr = data && typeof data === 'object' && !Array.isArray(data) ? Object.values(data) : (data || []);
+        notesArr.forEach((note) => { if (note && note.id) lastSyncedSnapshot[note.id] = JSON.stringify(note); });
         if (window.handleRemoteNotesUpdate) {
-          window.handleRemoteNotesUpdate(data || []);
+          window.handleRemoteNotesUpdate(notesArr);
         }
       });
     }
@@ -808,6 +864,7 @@ function saveNotes() {
   if (window.syncNotesToFirebase) {
     window.syncNotesToFirebase(notes);
   }
+  scheduleLocalBackup();
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -1892,6 +1949,127 @@ function processRestore(event) {
 /* ============ Google Drive Sync ============ */
 let gisTokenClient = null;
 let driveAccessToken = null;
+
+/* ============ Local Folder Auto-Backup (Dropbox/OneDrive সিঙ্কড ফোল্ডার) ============ */
+let localBackupDirHandle = null;
+
+function openLocalBackupDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('lumina_local_backup_db', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('handles'); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveLocalBackupHandle(handle) {
+  const db = await openLocalBackupDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, 'backupDir');
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadLocalBackupHandle() {
+  const db = await openLocalBackupDb();
+  return new Promise((resolve) => {
+    const tx = db.transaction('handles', 'readonly');
+    const req = tx.objectStore('handles').get('backupDir');
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => resolve(null);
+  });
+}
+
+async function clearLocalBackupHandle() {
+  const db = await openLocalBackupDb();
+  return new Promise((resolve) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').delete('backupDir');
+    tx.oncomplete = () => resolve();
+  });
+}
+
+function updateLocalBackupStatus(text) {
+  const el = document.getElementById('local-backup-status');
+  if (el) el.textContent = text;
+}
+
+async function chooseLocalBackupFolder() {
+  if (!window.showDirectoryPicker) {
+    updateLocalBackupStatus('❌ এই ব্রাউজারে এই ফিচার সাপোর্ট করে না — Chrome অথবা Edge ব্যবহার করুন।');
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    localBackupDirHandle = handle;
+    await saveLocalBackupHandle(handle);
+    updateLocalBackupStatus('✅ কানেক্ট করা হয়েছে: "' + handle.name + '" ফোল্ডারে অটো-ব্যাকআপ চালু আছে।');
+    runLocalBackupNow();
+  } catch (err) {
+    if (err.name !== 'AbortError') updateLocalBackupStatus('❌ ফোল্ডার সিলেক্ট করা যায়নি: ' + err.message);
+  }
+}
+
+async function disconnectLocalBackupFolder() {
+  localBackupDirHandle = null;
+  await clearLocalBackupHandle();
+  clearTimeout(localBackupDebounceTimer);
+  updateLocalBackupStatus('বিচ্ছিন্ন করা হয়েছে। এখনো কোনো ফোল্ডার সিলেক্ট করা নেই।');
+}
+
+async function ensureLocalBackupPermission() {
+  if (!localBackupDirHandle) return false;
+  const opts = { mode: 'readwrite' };
+  if ((await localBackupDirHandle.queryPermission(opts)) === 'granted') return true;
+  if ((await localBackupDirHandle.requestPermission(opts)) === 'granted') return true;
+  return false;
+}
+
+async function runLocalBackupNow() {
+  if (!localBackupDirHandle) {
+    updateLocalBackupStatus('আগে একটা ফোল্ডার সিলেক্ট করুন।');
+    return;
+  }
+  const ok = await ensureLocalBackupPermission();
+  if (!ok) {
+    updateLocalBackupStatus('❌ ফোল্ডারে লেখার permission পাওয়া যায়নি — আবার "ফোল্ডার সিলেক্ট করুন" চাপুন।');
+    return;
+  }
+  try {
+    const fileHandle = await localBackupDirHandle.getFileHandle('lumina_notes_backup.json', { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify({ exportedAt: new Date().toISOString(), notes }, null, 2));
+    await writable.close();
+    updateLocalBackupStatus('✅ শেষ ব্যাকআপ: ' + new Date().toLocaleString());
+  } catch (err) {
+    updateLocalBackupStatus('❌ ব্যাকআপ ব্যর্থ: ' + err.message);
+  }
+}
+
+let localBackupDebounceTimer = null;
+function scheduleLocalBackup() {
+  if (!localBackupDirHandle) return;
+  clearTimeout(localBackupDebounceTimer);
+  // কোনো কিছু লেখা/এডিট করার ২০ সেকেন্ড পর (আর টাইপ না করলে) ব্যাকআপ নেবে —
+  // প্রতিটা কি-স্ট্রোকে না লিখে অল্প অপেক্ষা করে একসাথে লেখে, ডিস্কে/Dropbox-এ বাড়তি চাপ এড়াতে
+  localBackupDebounceTimer = setTimeout(runLocalBackupNow, 20 * 1000);
+}
+
+(async function initLocalBackup() {
+  const handle = await loadLocalBackupHandle();
+  if (handle) {
+    localBackupDirHandle = handle;
+    const granted = (await handle.queryPermission({ mode: 'readwrite' })) === 'granted';
+    if (granted) {
+      updateLocalBackupStatus('✅ কানেক্টেড: "' + handle.name + '" — অটো-ব্যাকআপ চালু আছে।');
+      runLocalBackupNow(); // অ্যাপ খোলার সাথে সাথেই একটা ব্যাকআপ নেওয়া হবে
+    } else {
+      updateLocalBackupStatus('⚠️ "' + handle.name + '" আগে কানেক্ট করা ছিল — permission আবার নিশ্চিত করতে "এখনই ব্যাকআপ নিন" চাপুন।');
+    }
+  }
+})();
 
 function openSettingsModal() {
   document.getElementById('gdrive-client-id').value = localStorage.getItem('lumina_gdrive_client_id') || '';
