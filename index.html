@@ -682,10 +682,21 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
 
     signInWithEmailAndPassword(auth, email, pass)
       .catch((err) => {
-        // শুধুমাত্র "user-not-found" হলেই নতুন অ্যাকাউন্ট বানানোর চেষ্টা করবে —
-        // অন্য যেকোনো error (ভুল পাসওয়ার্ড, disabled account, ইত্যাদি) সরাসরি দেখাবে, লুকাবে না
-        if (err.code === 'auth/user-not-found') {
-          return createUserWithEmailAndPassword(auth, email, pass);
+        // Firebase এখন "email enumeration protection"-এর কারণে ইমেইল না-থাকা আর ভুল পাসওয়ার্ড —
+        // দুটোর জন্যই একই generic কোড (auth/invalid-credential) দেয়, তাই দুটো ক্ষেত্রেই
+        // রেজিস্ট্রেশনের চেষ্টা করি — যদি সত্যিই নতুন ইউজার হয়, রেজিস্ট্রেশন সফল হবে;
+        // যদি অ্যাকাউন্ট আগে থেকেই থাকে (মানে আসল কারণ ছিল ভুল পাসওয়ার্ড), সেটা নিচে ধরা হবে
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+          return createUserWithEmailAndPassword(auth, email, pass)
+            .catch((regErr) => {
+              if (regErr.code === 'auth/email-already-in-use') {
+                // অ্যাকাউন্ট আগে থেকেই আছে — তাহলে আসল কারণ ছিল ভুল পাসওয়ার্ড
+                const clearErr = new Error('ভুল পাসওয়ার্ড — এই ইমেইল দিয়ে আগে থেকেই একাউন্ট আছে, সঠিক পাসওয়ার্ড দিন');
+                clearErr.code = 'auth/wrong-password';
+                throw clearErr;
+              }
+              throw regErr;
+            });
         }
         throw err;
       })
