@@ -166,25 +166,27 @@ body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;borde
 /* Client Deadline Countdown Badge — সময় ঘনিয়ে এলে রঙ বদলে সতর্ক করবে */
 .client-deadline-badge {
   display: inline-flex !important;
-  flex-direction: column;
-  align-items: flex-start;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid rgba(124,108,240,0.35);
-  border-radius: 14px;
-  padding: 6px 12px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(245,158,11,0.12);
+  color: #b45309;
+  border: 1px solid rgba(245,158,11,0.35);
+  border-radius: 20px;
+  padding: 2px 10px;
   font-size: 0.85rem;
   font-family: var(--mono);
   font-weight: 700;
-  margin: 4px 4px 4px 0 !important;
+  letter-spacing: 0.3px;
+  margin-left: 10px !important;
+  margin-right: 4px !important;
   user-select: none;
   vertical-align: middle !important;
-  line-height: 1.5;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
-.client-deadline-badge .cd-label { font-family: var(--sans, inherit); font-size: 0.72rem; font-weight: 600; opacity: 0.8; }
-.client-deadline-badge.cd-urgent { background: rgba(245,158,11,0.14); color: #b45309; border-color: rgba(245,158,11,0.4); }
-.client-deadline-badge.cd-critical { background: rgba(239,68,68,0.14); color: #dc2626; border-color: rgba(239,68,68,0.45); animation: cd-pulse 1.4s ease-in-out infinite; }
-.client-deadline-badge.cd-passed { background: rgba(239,68,68,0.2); color: #dc2626; border-color: rgba(239,68,68,0.5); }
+.client-deadline-badge.cd-urgent { background: rgba(245,158,11,0.18); color: #b45309; border-color: rgba(245,158,11,0.45); }
+.client-deadline-badge.cd-critical { background: rgba(239,68,68,0.16); color: #dc2626; border-color: rgba(239,68,68,0.5); animation: cd-pulse 1.4s ease-in-out infinite; }
+.client-deadline-badge.cd-passed { background: rgba(239,68,68,0.22); color: #dc2626; border-color: rgba(239,68,68,0.55); }
 @keyframes cd-pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
 
 /* Local Folder Link Styling */
@@ -1208,6 +1210,7 @@ function updateCdPreview() {
 }
 
 function openClientDeadlineModal() {
+  saveSelection(); // মডাল খোলার আগে cursor position মনে রাখা, যাতে badge ঠিক জায়গায় বসে
   populateCdSelects();
   const now = new Date();
   document.getElementById('cd-day').value = now.getDate();
@@ -1253,15 +1256,16 @@ function saveClientDeadline() {
   if (ampm === 'AM' && hour === 12) hour = 0;
 
   const targetUtc = wallTimeInZoneToUtc(year, month, day, hour, min, tz);
-  const tzLabel = document.getElementById('cd-timezone').selectedOptions[0].textContent;
 
   const badge = document.createElement('span');
   badge.className = 'client-deadline-badge';
   badge.contentEditable = 'false';
   badge.setAttribute('data-deadline', targetUtc);
   badge.setAttribute('data-label', label);
-  badge.setAttribute('data-tzlabel', tzLabel);
-  badge.innerHTML = `<span class="cd-label">🚨 ${label}</span><span class="cd-countdown">Calculating...</span>`;
+  badge.textContent = `🚨 ${label}: Calculating...`;
+
+  els.editorBody.focus();
+  restoreSelection(); // মডালে যাওয়ার আগে যেখানে cursor ছিল, ঠিক সেখানেই ফিরিয়ে আনা
   insertBadgeAtCursor(badge);
 
   closeClientDeadlineModal();
@@ -1966,10 +1970,9 @@ function startGlobalTrackers() {
     const deadlineBadges = document.querySelectorAll('.client-deadline-badge');
     deadlineBadges.forEach(b => {
       const target = parseInt(b.getAttribute('data-deadline'));
+      const label = b.getAttribute('data-label') || 'Deadline';
       if (!target) return;
       const diff = target - now;
-      const countEl = b.querySelector('.cd-countdown');
-      if (!countEl) return;
 
       b.classList.remove('cd-urgent', 'cd-critical', 'cd-passed');
 
@@ -1977,7 +1980,7 @@ function startGlobalTrackers() {
         const overdueMs = Math.abs(diff);
         const oh = Math.floor(overdueMs / (1000 * 60 * 60));
         const om = Math.floor((overdueMs / (1000 * 60)) % 60);
-        countEl.textContent = `⚠️ সময় পেরিয়ে গেছে (${oh}h ${om}m আগে)`;
+        b.textContent = `🚨 ${label}: সময় পেরিয়ে গেছে (${oh}h ${om}m আগে)`;
         b.classList.add('cd-passed');
         return;
       }
@@ -1987,7 +1990,7 @@ function startGlobalTrackers() {
       const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const pad = (n) => String(n).padStart(2, '0');
-      countEl.textContent = `⏳ ${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s বাকি`;
+      b.textContent = `🚨 ${label}: ${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s বাকি`;
 
       const totalHoursLeft = diff / (1000 * 60 * 60);
       if (totalHoursLeft <= 3) b.classList.add('cd-critical');
