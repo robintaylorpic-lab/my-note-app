@@ -163,6 +163,30 @@ body.zen-mode .editor-view{max-width:820px;margin:0 auto;padding:40px 20px;borde
   border-color: rgba(124,108,240,0.30);
 }
 
+/* Client Deadline Countdown Badge — সময় ঘনিয়ে এলে রঙ বদলে সতর্ক করবে */
+.client-deadline-badge {
+  display: inline-flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(124,108,240,0.35);
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-family: var(--mono);
+  font-weight: 700;
+  margin: 4px 4px 4px 0 !important;
+  user-select: none;
+  vertical-align: middle !important;
+  line-height: 1.5;
+}
+.client-deadline-badge .cd-label { font-family: var(--sans, inherit); font-size: 0.72rem; font-weight: 600; opacity: 0.8; }
+.client-deadline-badge.cd-urgent { background: rgba(245,158,11,0.14); color: #b45309; border-color: rgba(245,158,11,0.4); }
+.client-deadline-badge.cd-critical { background: rgba(239,68,68,0.14); color: #dc2626; border-color: rgba(239,68,68,0.45); animation: cd-pulse 1.4s ease-in-out infinite; }
+.client-deadline-badge.cd-passed { background: rgba(239,68,68,0.2); color: #dc2626; border-color: rgba(239,68,68,0.5); }
+@keyframes cd-pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+
 /* Local Folder Link Styling */
 .local-folder-wrap { display: inline-flex; align-items: center; gap: 4px; margin: 2px 4px; }
 .local-folder-link {
@@ -522,6 +546,7 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
         
         <button class="tool-btn" title="Start Live Stop Watch" onclick="insertClientTracker()">⏱️ Tracker</button>
         <button class="tool-btn" title="Paste Date & Time to Count Up" onclick="insertCustomDateTracker()">⏳ Custom Tracker</button>
+        <button class="tool-btn" title="Client Deadline Countdown (Timezone-aware)" onclick="openClientDeadlineModal()">🚨 Client Deadline</button>
         
         <div class="tool-sep"></div>
         <button class="tool-btn" onclick="execCmd('hiliteColor','rgba(139,124,246,0.3)')">HL</button>
@@ -620,6 +645,55 @@ mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:4px
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
       <button onclick="closeAlarmModal()">Cancel</button>
       <button class="btn-new" onclick="saveAlarmReminder()">Set Alarm</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="client-deadline-modal">
+  <div class="modal-content" style="width:440px;">
+    <h3>🚨 Client Deadline Countdown</h3>
+    <p style="font-size:0.8rem;color:var(--text-muted);">ক্লায়েন্ট যেই দেশের সময় অনুযায়ী ডেডলাইন দিয়েছে সেটা সিলেক্ট করুন — আপনার সময়ে ঠিকভাবে কনভার্ট করে countdown শুরু হবে (DST/সময়ের পরিবর্তনসহ স্বয়ংক্রিয়ভাবে হিসাব হবে)।</p>
+
+    <label style="font-size:0.78rem;color:var(--text-muted);">ক্লায়েন্টের দেশ / টাইমজোন</label>
+    <select id="cd-timezone" style="width:100%;margin-bottom:8px;">
+      <option value="America/New_York">USA — Eastern (EST/EDT)</option>
+      <option value="America/Chicago">USA — Central (CST/CDT)</option>
+      <option value="America/Denver">USA — Mountain (MST/MDT)</option>
+      <option value="America/Los_Angeles">USA — Pacific (PST/PDT)</option>
+      <option value="Europe/London">UK (GMT/BST)</option>
+      <option value="Europe/Berlin">Germany (CET/CEST)</option>
+      <option value="Europe/Paris">France (CET/CEST)</option>
+      <option value="Asia/Dhaka">Bangladesh (নিজের সময়, রেফারেন্সের জন্য)</option>
+    </select>
+
+    <div style="display:flex;gap:8px;">
+      <input type="number" id="cd-day" placeholder="Day (1-31)" min="1" max="31" style="width:30%;">
+      <select id="cd-month" style="width:40%;">
+        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+      </select>
+      <input type="number" id="cd-year" placeholder="Year" min="2024" max="2100" style="width:30%;">
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <select id="cd-hour" style="width:35%;"></select>
+      <select id="cd-min" style="width:35%;"></select>
+      <select id="cd-ampm" style="width:30%;">
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+
+    <label style="font-size:0.78rem;color:var(--text-muted);margin-top:8px;display:block;">শর্ট লেবেল (যেমন: "Oscar's market")</label>
+    <input type="text" id="cd-label" placeholder="কী নিয়ে ডেডলাইন, ছোট করে লিখুন" style="width:100%;">
+
+    <div id="cd-preview" style="font-size:0.78rem;color:var(--text-muted);margin-top:10px;background:var(--accent-soft);padding:8px 10px;border-radius:8px;"></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button onclick="closeClientDeadlineModal()">Cancel</button>
+      <button class="btn-new" onclick="saveClientDeadline()">Start Countdown</button>
     </div>
   </div>
 </div>
@@ -1064,6 +1138,133 @@ function openAlarmModal() {
   document.getElementById('alarm-note-text').value = currentTitle ? `Reminder for: ${currentTitle}` : '';
   document.getElementById('alarm-repeat').checked = false;
   document.getElementById('alarm-set-modal').style.display = 'flex';
+}
+
+/* ============ Client Deadline Countdown (Timezone-aware) ============ */
+
+// একটা নির্দিষ্ট টাইমজোনে একটা নির্দিষ্ট মুহূর্তে ঠিক কত মিনিটের অফসেট আছে UTC থেকে, বের করে
+// (DST/গ্রীষ্মকালীন সময় পরিবর্তন স্বয়ংক্রিয়ভাবে হিসাবে চলে আসে, কারণ এটা Intl API ব্যবহার করে)
+function getTzOffsetMinutes(timeZone, date) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone, hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+  const parts = dtf.formatToParts(date);
+  const map = {};
+  parts.forEach(p => { if (p.type !== 'literal') map[p.type] = parseInt(p.value); });
+  if (map.hour === 24) map.hour = 0;
+  const asUTC = Date.UTC(map.year, map.month - 1, map.day, map.hour, map.minute, map.second);
+  return (asUTC - date.getTime()) / 60000;
+}
+
+// "অমুক টাইমজোনে এই ওয়াল-ক্লক তারিখ/সময়টা" — সেটাকে প্রকৃত UTC timestamp-এ রূপান্তর করে
+function wallTimeInZoneToUtc(year, month, day, hour, minute, timeZone) {
+  let guess = Date.UTC(year, month, day, hour, minute, 0);
+  for (let i = 0; i < 2; i++) {
+    const offsetMin = getTzOffsetMinutes(timeZone, new Date(guess));
+    guess = Date.UTC(year, month, day, hour, minute, 0) - offsetMin * 60000;
+  }
+  return guess;
+}
+
+function populateCdSelects() {
+  const hSel = document.getElementById('cd-hour');
+  const mSel = document.getElementById('cd-min');
+  if (hSel.options.length) return; // একবারই populate করলেই যথেষ্ট
+  for (let i = 1; i <= 12; i++) {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = String(i).padStart(2, '0');
+    hSel.appendChild(o);
+  }
+  for (let i = 0; i < 60; i++) {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = String(i).padStart(2, '0');
+    mSel.appendChild(o);
+  }
+}
+
+function updateCdPreview() {
+  const day = parseInt(document.getElementById('cd-day').value);
+  const month = parseInt(document.getElementById('cd-month').value);
+  const year = parseInt(document.getElementById('cd-year').value);
+  let hour = parseInt(document.getElementById('cd-hour').value);
+  const min = parseInt(document.getElementById('cd-min').value);
+  const ampm = document.getElementById('cd-ampm').value;
+  const tz = document.getElementById('cd-timezone').value;
+  const preview = document.getElementById('cd-preview');
+
+  if (isNaN(day) || day < 1 || day > 31 || isNaN(year)) { preview.textContent = 'তারিখ দিন প্রিভিউ দেখতে...'; return; }
+
+  let h24 = hour;
+  if (ampm === 'PM' && h24 < 12) h24 += 12;
+  if (ampm === 'AM' && h24 === 12) h24 = 0;
+
+  const utcMs = wallTimeInZoneToUtc(year, month, day, h24, min, tz);
+  const localStr = new Date(utcMs).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  const tzLabel = document.getElementById('cd-timezone').selectedOptions[0].textContent;
+
+  preview.innerHTML = `🕐 <strong>${tzLabel}</strong>-এ ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} ${ampm} = <strong>আপনার সময়ে: ${localStr}</strong>`;
+}
+
+function openClientDeadlineModal() {
+  populateCdSelects();
+  const now = new Date();
+  document.getElementById('cd-day').value = now.getDate();
+  document.getElementById('cd-month').value = now.getMonth();
+  document.getElementById('cd-year').value = now.getFullYear();
+  let h = now.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  document.getElementById('cd-hour').value = h;
+  document.getElementById('cd-min').value = now.getMinutes();
+  document.getElementById('cd-ampm').value = ampm;
+  document.getElementById('cd-label').value = '';
+
+  ['cd-day','cd-month','cd-year','cd-hour','cd-min','cd-ampm','cd-timezone'].forEach(id => {
+    document.getElementById(id).onchange = updateCdPreview;
+    document.getElementById(id).oninput = updateCdPreview;
+  });
+  updateCdPreview();
+
+  document.getElementById('client-deadline-modal').style.display = 'flex';
+}
+
+function closeClientDeadlineModal() {
+  document.getElementById('client-deadline-modal').style.display = 'none';
+}
+
+function saveClientDeadline() {
+  const day = parseInt(document.getElementById('cd-day').value);
+  const month = parseInt(document.getElementById('cd-month').value);
+  const year = parseInt(document.getElementById('cd-year').value);
+  let hour = parseInt(document.getElementById('cd-hour').value);
+  const min = parseInt(document.getElementById('cd-min').value);
+  const ampm = document.getElementById('cd-ampm').value;
+  const tz = document.getElementById('cd-timezone').value;
+  const label = document.getElementById('cd-label').value.trim() || 'Deadline';
+
+  if (isNaN(day) || day < 1 || day > 31 || isNaN(year)) {
+    alert('একটা সঠিক তারিখ দিন!');
+    return;
+  }
+
+  if (ampm === 'PM' && hour < 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+
+  const targetUtc = wallTimeInZoneToUtc(year, month, day, hour, min, tz);
+  const tzLabel = document.getElementById('cd-timezone').selectedOptions[0].textContent;
+
+  const badge = document.createElement('span');
+  badge.className = 'client-deadline-badge';
+  badge.contentEditable = 'false';
+  badge.setAttribute('data-deadline', targetUtc);
+  badge.setAttribute('data-label', label);
+  badge.setAttribute('data-tzlabel', tzLabel);
+  badge.innerHTML = `<span class="cd-label">🚨 ${label}</span><span class="cd-countdown">Calculating...</span>`;
+  insertBadgeAtCursor(badge);
+
+  closeClientDeadlineModal();
 }
 
 function closeAlarmModal() {
@@ -1745,19 +1946,52 @@ function startGlobalTrackers() {
   if (trackerInterval) clearInterval(trackerInterval);
   trackerInterval = setInterval(() => {
     const badges = document.querySelectorAll('.client-tracker-badge');
-    if (!badges.length) return;
     const now = Date.now();
-    badges.forEach(b => {
-      const startTime = parseInt(b.getAttribute('data-start'));
-      if (!startTime) return;
-      const diff = Math.max(0, now - startTime);
+    if (badges.length) {
+      badges.forEach(b => {
+        const startTime = parseInt(b.getAttribute('data-start'));
+        if (!startTime) return;
+        const diff = Math.max(0, now - startTime);
+        const seconds = Math.floor((diff / 1000) % 60);
+        const minutes = Math.floor((diff / (1000 * 60)) % 60);
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+        const pad = (n) => String(n).padStart(2, '0');
+        b.textContent = `⏱️ ${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+      });
+    }
+
+    // Client Deadline countdown — deadline পর্যন্ত কত সময় বাকি (count DOWN), কাছে চলে এলে রঙ বদলাবে
+    const deadlineBadges = document.querySelectorAll('.client-deadline-badge');
+    deadlineBadges.forEach(b => {
+      const target = parseInt(b.getAttribute('data-deadline'));
+      if (!target) return;
+      const diff = target - now;
+      const countEl = b.querySelector('.cd-countdown');
+      if (!countEl) return;
+
+      b.classList.remove('cd-urgent', 'cd-critical', 'cd-passed');
+
+      if (diff <= 0) {
+        const overdueMs = Math.abs(diff);
+        const oh = Math.floor(overdueMs / (1000 * 60 * 60));
+        const om = Math.floor((overdueMs / (1000 * 60)) % 60);
+        countEl.textContent = `⚠️ সময় পেরিয়ে গেছে (${oh}h ${om}m আগে)`;
+        b.classList.add('cd-passed');
+        return;
+      }
+
       const seconds = Math.floor((diff / 1000) % 60);
       const minutes = Math.floor((diff / (1000 * 60)) % 60);
       const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      
       const pad = (n) => String(n).padStart(2, '0');
-      b.textContent = `⏱️ ${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+      countEl.textContent = `⏳ ${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s বাকি`;
+
+      const totalHoursLeft = diff / (1000 * 60 * 60);
+      if (totalHoursLeft <= 3) b.classList.add('cd-critical');
+      else if (totalHoursLeft <= 24) b.classList.add('cd-urgent');
     });
   }, 1000);
 }
